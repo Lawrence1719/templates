@@ -22,6 +22,7 @@ packages/shell    App shell module (sidebar, top bar, theme, ⌘K)
 packages/ui       Shared components and design tokens
 packages/audit    Audit log module (append-only, searchable, CSV export)
 packages/reports  Dashboard & reports module (KPI tiles, trends, breakdowns)
+packages/notifications  In-app + email notifications with preferences
 ```
 
 ## Quickstart
@@ -43,7 +44,7 @@ docker compose up -d
 pnpm test
 ```
 
-44 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), and dashboard metrics (day bucketing, period comparison, org scoping). CI runs lint, typecheck, tests and build on every push.
+59 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), dashboard metrics (day bucketing, period comparison, org scoping), and notifications (right recipients, preferences, inbox isolation, email escaping). CI runs lint, typecheck, tests and build on every push.
 
 ## Modules
 

@@ -8,6 +8,7 @@
 - **Input validation** with Zod; queries are parameterized by Drizzle.
 - **Auth**: hashed passwords, httpOnly + SameSite cookies, origin checks, rate-limited sign-in/up, expiring single-use invitations.
 - **Audit trail**: organization changes are written to an append-only `audit_log`; a database trigger rejects updates and deletes, so history can't be rewritten even by app code.
+- **Notifications** are read and changed only by their recipient in the active org (both IDs come from the session). Emails escape every user-supplied string, and links that leave the app are dropped.
 - **Secrets** are validated at startup and never committed (`.env` is ignored; see `.env.example`).
 
 ## Verified

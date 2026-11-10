@@ -7,6 +7,7 @@ import { organization } from "better-auth/plugins"
 
 import { auditHooks, type GetSession, leaveAuditHook } from "./audit-hooks"
 import { env } from "./env"
+import { combineHooks, notificationHooks, sendInvitationEmail } from "./notification-hooks"
 import { ac, roles } from "./permissions"
 
 // Defined before `auth` so its type doesn't depend on itself; only called at request time.
@@ -46,14 +47,8 @@ export const auth = betterAuth({
       creatorRole: "owner",
       invitationExpiresIn: 60 * 60 * 48, // 48 hours
       // Every org change lands in the audit log.
-      organizationHooks: auditHooks(getSessionLazy),
-      async sendInvitationEmail({ email, organization, inviter, id }) {
-        // Swapped for real email in the notifications module.
-        const link = `${env.BETTER_AUTH_URL}/accept-invite/${id}`
-        console.info(
-          `[invite] ${inviter.user.email} invited ${email} to ${organization.name}: ${link}`,
-        )
-      },
+      organizationHooks: combineHooks(auditHooks(getSessionLazy), notificationHooks),
+      sendInvitationEmail,
     }),
     nextCookies(), // must stay last
   ],

@@ -28,6 +28,8 @@ type Props = {
   user: ShellUser
   orgs: ShellOrg[]
   activeOrgId: string
+  /** Extra controls in the top bar, before the theme toggle (e.g. a notification bell). */
+  topbarActions?: React.ReactNode
   children: React.ReactNode
 }
 
@@ -35,7 +37,15 @@ type Props = {
  * Signed-in layout: sidebar (drawer on mobile), top bar with search,
  * theme toggle and user menu, and a ⌘K command palette.
  */
-export function AppShell({ nav: allNav, allowed, user, orgs, activeOrgId, children }: Props) {
+export function AppShell({
+  nav: allNav,
+  allowed,
+  user,
+  orgs,
+  activeOrgId,
+  topbarActions,
+  children,
+}: Props) {
   const nav = allNav
     .map((g) => ({ ...g, items: g.items.filter((i) => allowed.includes(i.href)) }))
     .filter((g) => g.items.length > 0)
@@ -46,7 +56,13 @@ export function AppShell({ nav: allNav, allowed, user, orgs, activeOrgId, childr
           <SidebarBody nav={nav} orgs={orgs} activeOrgId={activeOrgId} />
         </aside>
         <div className="flex min-w-0 flex-1 flex-col">
-          <Topbar nav={nav} user={user} orgs={orgs} activeOrgId={activeOrgId} />
+          <Topbar
+            nav={nav}
+            user={user}
+            orgs={orgs}
+            activeOrgId={activeOrgId}
+            actions={topbarActions}
+          />
           <main className="mx-auto w-full max-w-5xl flex-1 px-4 py-8 sm:px-6">{children}</main>
         </div>
       </div>
@@ -113,7 +129,13 @@ function OrgSwitcher({ orgs, activeOrgId }: { orgs: ShellOrg[]; activeOrgId: str
   )
 }
 
-function Topbar({ nav, user, orgs, activeOrgId }: Omit<Props, "children" | "allowed">) {
+function Topbar({
+  nav,
+  user,
+  orgs,
+  activeOrgId,
+  actions,
+}: Omit<Props, "children" | "allowed" | "topbarActions"> & { actions?: React.ReactNode }) {
   const openPalette = useOpenPalette()
   const [menuOpen, setMenuOpen] = useState(false)
 
@@ -146,6 +168,7 @@ function Topbar({ nav, user, orgs, activeOrgId }: Omit<Props, "children" | "allo
       </button>
 
       <div className="ml-auto flex items-center gap-1">
+        {actions}
         <ThemeToggle />
         <UserMenu user={user} />
       </div>
