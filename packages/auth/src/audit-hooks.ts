@@ -1,5 +1,9 @@
 import { recordAudit } from "@templates/audit"
+import { db } from "@templates/db"
+import { user } from "@templates/db/schema"
+import { createAuthMiddleware } from "better-auth/api"
 import type { OrganizationOptions } from "better-auth/plugins"
+import { eq } from "drizzle-orm"
 import { headers } from "next/headers"
 
 type Hooks = NonNullable<OrganizationOptions["organizationHooks"]>
@@ -107,3 +111,28 @@ export function auditHooks(getSession: GetSession): Hooks {
     },
   }
 }
+
+/**
+ * Better Auth's /organization/leave doesn't fire the member hooks,
+ * so leaving is logged from a request-level after hook instead.
+ * The session isn't on the context here; the returned membership names the user.
+ */
+export const leaveAuditHook = createAuthMiddleware(async (ctx) => {
+  if (ctx.path !== "/organization/leave") return
+  const returned = ctx.context.returned as
+    | { userId?: string; organizationId?: string }
+    | Error
+    | undefined
+  if (!returned || returned instanceof Error || !returned.userId || !returned.organizationId) return
+  const [u] = await db
+    .select({ id: user.id, name: user.name, email: user.email })
+    .from(user)
+    .where(eq(user.id, returned.userId))
+  await recordAudit({
+    orgId: returned.organizationId,
+    actor: u ?? { id: returned.userId },
+    action: "member.left",
+    target: { type: "user", id: returned.userId },
+    summary: `${u?.name ?? "A member"} left the organization`,
+  })
+})

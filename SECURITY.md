@@ -20,7 +20,17 @@
 | Non-member switches into another organization | 403            | ✓      |
 | 6 failed sign-ins within a minute             | 429 on the 6th | ✓      |
 
-These will become an automated test suite.
+These, and more, run automatically in [`tests/`](tests) on every push (see CI):
+
+| Area    | What's tested                                                                                                                         |
+| ------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| Auth    | sign-up/out, wrong password, password length, no hash in responses, sign-in rate limit                                                |
+| CSRF    | signed-in requests from a foreign or missing origin are rejected                                                                      |
+| Tenancy | non-members can't read, switch into, or invite into another org; invites only work for the invited email; removed members lose access |
+| Roles   | members can't manage anything; admins manage people but can't delete the org; per-permission matrix                                   |
+| Audit   | right actor per event, IP captured, UPDATE/DELETE rejected, org-scoped queries and exports, LIKE escaping, CSV formula neutralization |
+
+**Note:** Better Auth disables its origin check when `NODE_ENV=test`. This project sets `disableOriginCheck: false` explicitly so the protection is always on — and tested.
 
 ## Reporting
 

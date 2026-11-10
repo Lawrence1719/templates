@@ -5,7 +5,7 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { nextCookies } from "better-auth/next-js"
 import { organization } from "better-auth/plugins"
 
-import { auditHooks, type GetSession } from "./audit-hooks"
+import { auditHooks, type GetSession, leaveAuditHook } from "./audit-hooks"
 import { env } from "./env"
 import { ac, roles } from "./permissions"
 
@@ -33,8 +33,11 @@ export const auth = betterAuth({
       "/sign-up/email": { window: 60, max: 3 },
     },
   },
+  hooks: { after: leaveAuditHook },
   advanced: {
     database: { generateId: "uuid" },
+    // Always enforce CSRF/origin checks (Better Auth skips them when NODE_ENV=test).
+    disableOriginCheck: false,
   },
   plugins: [
     organization({
