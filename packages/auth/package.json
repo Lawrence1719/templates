@@ -1,0 +1,27 @@
+{
+  "name": "@templates/auth",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./client": "./src/client.ts",
+    "./permissions": "./src/permissions.ts",
+    "./guards": "./src/guards.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@templates/db": "workspace:*",
+    "better-auth": "1.7.19",
+    "next": "16.4.6",
+    "server-only": "^0.0.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@templates/config": "workspace:*",
+    "@types/node": "^24",
+    "typescript": "^5"
+  }
+}

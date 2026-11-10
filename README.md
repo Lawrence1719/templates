@@ -13,15 +13,17 @@ Next.js · TypeScript · Postgres · Drizzle ORM · Better Auth · Tailwind + sh
 ```
 apps/starter      demo app with the modules installed
 packages/config   shared TypeScript config
-packages/db       Drizzle client and schema (each module adds its tables)
+packages/db       Drizzle client, schema and migrations
+packages/auth     Auth, roles & teams module
 ```
 
 ## Quickstart
 
 ```bash
-cp .env.example .env
+cp .env.example .env   # then set BETTER_AUTH_SECRET
 docker compose up -d
 pnpm install
+pnpm --filter @templates/db db:migrate
 pnpm dev
 ```
 

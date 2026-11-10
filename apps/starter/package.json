@@ -9,18 +9,20 @@
     "typecheck": "next typegen && tsc"
   },
   "dependencies": {
+    "@templates/auth": "workspace:*",
+    "@templates/db": "workspace:*",
+    "better-auth": "1.7.19",
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "@templates/db": "workspace:*"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/turbopack": "4.3.3",
+    "@templates/config": "workspace:*",
     "@types/node": "^24",
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "4.3.3",
-    "typescript": "^5",
-    "@templates/config": "workspace:*"
+    "typescript": "^5"
   }
 }
