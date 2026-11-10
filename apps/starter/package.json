@@ -17,7 +17,8 @@
     "lucide-react": "1.71.0",
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0"
+    "react-dom": "19.3.0",
+    "@templates/audit": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",

@@ -1,0 +1,24 @@
+{
+  "name": "@templates/audit",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@templates/db": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "next": "16.4.6",
+    "server-only": "^0.0.1",
+    "zod": "4.6.7"
+  },
+  "devDependencies": {
+    "@templates/config": "workspace:*",
+    "@types/node": "^24",
+    "typescript": "^5"
+  }
+}

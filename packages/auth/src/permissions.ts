@@ -8,6 +8,7 @@ import { defaultStatements } from "better-auth/plugins/organization/access"
 export const statements = {
   ...defaultStatements,
   billing: ["read", "update"],
+  audit: ["read"],
 } as const
 
 export const ac = createAccessControl(statements)
@@ -25,6 +26,7 @@ export const admin = ac.newRole({
   team: ["create", "update", "delete"],
   ac: ["read"],
   billing: ["read"],
+  audit: ["read"],
 })
 
 /** Regular staff: uses the app, cannot manage the org. */

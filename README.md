@@ -17,6 +17,7 @@ packages/db       Drizzle client, schema and migrations
 packages/auth     Auth, roles & teams module
 packages/shell    App shell module (sidebar, top bar, theme, ⌘K)
 packages/ui       Shared components and design tokens
+packages/audit    Audit log module (append-only, searchable, CSV export)
 ```
 
 ## Quickstart

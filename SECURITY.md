@@ -7,6 +7,7 @@
 - **Tenant isolation**: all tenant data carries `org_id`, and server code filters by the `orgId` from the session — never from request input.
 - **Input validation** with Zod; queries are parameterized by Drizzle.
 - **Auth**: hashed passwords, httpOnly + SameSite cookies, origin checks, rate-limited sign-in/up, expiring single-use invitations.
+- **Audit trail**: organization changes are written to an append-only `audit_log`; a database trigger rejects updates and deletes, so history can't be rewritten even by app code.
 - **Secrets** are validated at startup and never committed (`.env` is ignored; see `.env.example`).
 
 ## Verified

@@ -5,8 +5,12 @@ import { drizzleAdapter } from "better-auth/adapters/drizzle"
 import { nextCookies } from "better-auth/next-js"
 import { organization } from "better-auth/plugins"
 
+import { auditHooks, type GetSession } from "./audit-hooks"
 import { env } from "./env"
 import { ac, roles } from "./permissions"
+
+// Defined before `auth` so its type doesn't depend on itself; only called at request time.
+const getSessionLazy: GetSession = (h) => auth.api.getSession({ headers: h })
 
 export const auth = betterAuth({
   secret: env.BETTER_AUTH_SECRET,
@@ -38,6 +42,8 @@ export const auth = betterAuth({
       roles,
       creatorRole: "owner",
       invitationExpiresIn: 60 * 60 * 48, // 48 hours
+      // Every org change lands in the audit log.
+      organizationHooks: auditHooks(getSessionLazy),
       async sendInvitationEmail({ email, organization, inviter, id }) {
         // Swapped for real email in the notifications module.
         const link = `${env.BETTER_AUTH_URL}/accept-invite/${id}`

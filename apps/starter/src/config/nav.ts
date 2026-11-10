@@ -1,5 +1,5 @@
 import type { NavGroup } from "@templates/shell"
-import { Building2, LayoutDashboard, UserRound } from "lucide-react"
+import { Building2, LayoutDashboard, ScrollText, UserRound } from "lucide-react"
 
 /**
  * The app's navigation. Each module adds its pages here.
@@ -23,6 +23,13 @@ export const nav: NavGroup[] = [
         href: "/settings/organization",
         icon: Building2,
         keywords: ["team", "members", "invite"],
+      },
+      {
+        title: "Audit log",
+        href: "/settings/audit-log",
+        icon: ScrollText,
+        permission: { audit: ["read"] },
+        keywords: ["history", "activity", "security", "logs"],
       },
     ],
   },
