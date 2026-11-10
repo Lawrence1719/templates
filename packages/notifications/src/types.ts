@@ -14,6 +14,11 @@ export const notificationTypes = {
     description: "When an owner or admin changes your role.",
     defaults: { inApp: true, email: true },
   },
+  "form.submitted": {
+    label: "A form gets a new response",
+    description: "Sent to owners and admins.",
+    defaults: { inApp: true, email: false },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",

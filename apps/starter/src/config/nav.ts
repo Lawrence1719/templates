@@ -1,5 +1,13 @@
 import type { NavGroup } from "@templates/shell"
-import { Bell, Building2, FolderOpen, LayoutDashboard, ScrollText, UserRound } from "lucide-react"
+import {
+  Bell,
+  Building2,
+  ClipboardList,
+  FolderOpen,
+  LayoutDashboard,
+  ScrollText,
+  UserRound,
+} from "lucide-react"
 
 /**
  * The app's navigation. Each module adds its pages here.
@@ -16,6 +24,13 @@ export const nav: NavGroup[] = [
         icon: FolderOpen,
         permission: { file: ["read"] },
         keywords: ["upload", "documents", "attachments"],
+      },
+      {
+        title: "Forms",
+        href: "/forms",
+        icon: ClipboardList,
+        permission: { form: ["manage"] },
+        keywords: ["survey", "intake", "responses"],
       },
     ],
   },

@@ -24,7 +24,8 @@
     "react-dom": "19.3.0",
     "@templates/notifications": "workspace:*",
     "zod": "4.6.7",
-    "@templates/files": "workspace:*"
+    "@templates/files": "workspace:*",
+    "@templates/forms": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",

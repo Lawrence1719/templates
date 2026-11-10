@@ -24,6 +24,7 @@ packages/audit    Audit log module (append-only, searchable, CSV export)
 packages/reports  Dashboard & reports module (KPI tiles, trends, breakdowns)
 packages/notifications  In-app + email notifications with preferences
 packages/files    Uploads with type checking, S3 or local storage
+packages/forms    Form builder, public share links, responses
 ```
 
 ## Quickstart
@@ -45,19 +46,21 @@ docker compose up -d
 pnpm test
 ```
 
-94 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), dashboard metrics (day bucketing, period comparison, org scoping), notifications (right recipients, preferences, inbox isolation, email escaping), and files (type detection, name sanitizing, org isolation, delete rights). CI runs lint, typecheck, tests and build on every push.
+120 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), dashboard metrics (day bucketing, period comparison, org scoping), notifications (right recipients, preferences, inbox isolation, email escaping), files (type detection, name sanitizing, org isolation, delete rights), and forms (validation, spam protection, members-only access, org isolation). CI runs lint, typecheck, tests and build on every push.
 
 ## Modules
 
-| Module                                  | Status  |
-| --------------------------------------- | ------- |
-| Auth, roles & teams                     | next    |
-| App shell                               | planned |
-| Audit log                               | planned |
-| [Dashboard & reports](packages/reports) | ✅ v0.1 |
-| Notifications                           | planned |
-| Files                                   | planned |
-| Forms                                   | planned |
+All seven core modules are done. Each has its own README with features, setup and security notes.
+
+| Module                                  | What it gives you                                                            | Status  |
+| --------------------------------------- | ---------------------------------------------------------------------------- | ------- |
+| [Auth, roles & teams](packages/auth)    | Sign-in, organizations, invitations, owner/admin/member roles, server guards | ✅ v0.1 |
+| [App shell](packages/shell)             | Sidebar, top bar, org switcher, theme, ⌘K command palette                    | ✅ v0.1 |
+| [Audit log](packages/audit)             | Append-only history, search, filters, CSV export                             | ✅ v0.1 |
+| [Dashboard & reports](packages/reports) | KPI tiles, trend charts, breakdowns, date ranges                             | ✅ v0.1 |
+| [Notifications](packages/notifications) | In-app bell, inbox, email, per-user preferences                              | ✅ v0.1 |
+| [Files](packages/files)                 | Uploads with type checking, S3 or local storage                              | ✅ v0.1 |
+| [Forms](packages/forms)                 | Form builder, public share links, responses                                  | ✅ v0.1 |
 
 ## License
 
