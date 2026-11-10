@@ -1,0 +1,34 @@
+{
+  "name": "@templates/reports",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./server": "./src/server.ts",
+    "./widgets": "./src/widgets/index.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@templates/db": "workspace:*",
+    "@templates/ui": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "lucide-react": "1.71.0",
+    "recharts": "3.10.1",
+    "server-only": "^0.0.1",
+    "zod": "4.6.7"
+  },
+  "peerDependencies": {
+    "next": "^16",
+    "react": "^19"
+  },
+  "devDependencies": {
+    "@templates/config": "workspace:*",
+    "@types/node": "^24",
+    "@types/react": "^19",
+    "next": "16.4.6",
+    "typescript": "^5"
+  }
+}

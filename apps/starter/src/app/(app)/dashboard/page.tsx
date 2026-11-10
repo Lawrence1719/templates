@@ -1,53 +1,69 @@
-import { auth } from "@templates/auth"
-import { requireOrg } from "@templates/auth/guards"
-import { Card, PageHeader } from "@templates/ui/card"
+import { can, requireOrg } from "@templates/auth/guards"
+import { parseRange } from "@templates/reports"
+import { computeBreakdowns, computeMetrics, recentActivity } from "@templates/reports/server"
+import {
+  ActivityFeed,
+  BarList,
+  RangePicker,
+  StatTile,
+  TrendChart,
+} from "@templates/reports/widgets"
+import { PageHeader } from "@templates/ui/card"
 import type { Metadata } from "next"
-import { headers } from "next/headers"
-import Link from "next/link"
+
+import { dashboard } from "@/config/dashboard"
 
 export const metadata: Metadata = { title: "Dashboard" }
 
-export default async function DashboardPage() {
+export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const { user, orgId } = await requireOrg()
-  const org = await auth.api.getFullOrganization({
-    headers: await headers(),
-    query: { organizationId: orgId },
-  })
-  if (!org) return null
-  const pending = org.invitations.filter((i) => i.status === "pending").length
-  const role = org.members.find((m) => m.userId === user.id)?.role
+  const range = parseRange((await searchParams).range)
+  const canSeeActivity = await can({ audit: ["read"] })
 
-  const stats = [
-    { label: "Members", value: org.members.length, href: "/settings/organization" },
-    { label: "Pending invites", value: pending, href: "/settings/organization" },
-    { label: "Your role", value: role, href: "/settings/profile" },
-  ]
+  // Activity data comes from the audit log, so only roles allowed to read it see it.
+  const tiles = dashboard.tiles.filter((m) => canSeeActivity || m.id !== "activity")
+  const [metrics, breakdowns, recent] = await Promise.all([
+    computeMetrics(tiles, orgId, range),
+    canSeeActivity ? computeBreakdowns(dashboard.breakdowns, orgId, range) : [],
+    canSeeActivity ? recentActivity(orgId) : [],
+  ])
+  const trend = metrics.find((m) => m.id === dashboard.trend) ?? metrics[0]
+  const period = `${range.days} days`
 
   return (
-    <div className="grid gap-8">
+    <div className="grid grid-cols-[minmax(0,1fr)] gap-6">
       <PageHeader
-        title={`Welcome, ${user.name.split(" ")[0]}`}
-        description={`Here's what's happening in ${org.name}.`}
+        title={`Welcome back, ${user.name.split(" ")[0]}`}
+        description={`Last ${period}, compared with the ${period} before.`}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            <RangePicker value={range.preset} basePath="/dashboard" />
+            <a
+              href={`/dashboard/export?range=${range.preset}`}
+              className="inline-flex h-9 items-center rounded-md border px-3 text-sm font-medium hover:bg-accent"
+            >
+              Export CSV
+            </a>
+          </div>
+        }
       />
-      <div className="grid gap-4 sm:grid-cols-3">
-        {stats.map((s) => (
-          <Link
-            key={s.label}
-            href={s.href}
-            className="rounded-xl transition-colors hover:bg-accent"
-          >
-            <Card>
-              <p className="text-sm text-muted-foreground">{s.label}</p>
-              <p className="mt-1 text-2xl font-semibold capitalize">{s.value}</p>
-            </Card>
-          </Link>
+
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        {metrics.map((m) => (
+          <StatTile key={m.id} metric={m} periodLabel={period} />
         ))}
       </div>
-      <Card className="border-dashed text-center">
-        <p className="text-sm text-muted-foreground">
-          Modules you add (CRM, inventory, orders…) show up in the sidebar and here.
-        </p>
-      </Card>
+
+      {trend && <TrendChart metric={trend} />}
+
+      {canSeeActivity && (
+        <div className="grid gap-4 lg:grid-cols-3">
+          {breakdowns.map((b) => (
+            <BarList key={b.id} title={b.label} rows={b.rows} empty="No activity in this period." />
+          ))}
+          <ActivityFeed items={recent} moreHref="/settings/audit-log" />
+        </div>
+      )}
     </div>
   )
 }

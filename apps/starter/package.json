@@ -6,19 +6,22 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "typecheck": "next typegen && tsc"
+    "typecheck": "next typegen && tsc",
+    "seed:demo": "tsx scripts/seed-demo.mts"
   },
   "dependencies": {
+    "@templates/audit": "workspace:*",
     "@templates/auth": "workspace:*",
     "@templates/db": "workspace:*",
+    "@templates/reports": "workspace:*",
     "@templates/shell": "workspace:*",
     "@templates/ui": "workspace:*",
     "better-auth": "1.7.19",
+    "drizzle-orm": "0.45.4",
     "lucide-react": "1.71.0",
     "next": "16.4.6",
     "react": "19.3.0",
-    "react-dom": "19.3.0",
-    "@templates/audit": "workspace:*"
+    "react-dom": "19.3.0"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",
@@ -27,6 +30,7 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "tailwindcss": "4.3.5",
+    "tsx": "^4",
     "typescript": "^5"
   }
 }

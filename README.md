@@ -21,6 +21,7 @@ packages/auth     Auth, roles & teams module
 packages/shell    App shell module (sidebar, top bar, theme, ⌘K)
 packages/ui       Shared components and design tokens
 packages/audit    Audit log module (append-only, searchable, CSV export)
+packages/reports  Dashboard & reports module (KPI tiles, trends, breakdowns)
 ```
 
 ## Quickstart
@@ -30,6 +31,8 @@ cp .env.example .env   # then set BETTER_AUTH_SECRET
 docker compose up -d
 pnpm install
 pnpm --filter @templates/db db:migrate
+# optional: 90 days of demo data for a user you signed up with
+pnpm --filter @templates/starter seed:demo -- you@example.com
 pnpm dev
 ```
 
@@ -40,19 +43,19 @@ docker compose up -d
 pnpm test
 ```
 
-35 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, and the audit log (correct actor, tamper resistance, org scoping, CSV safety). CI runs lint, typecheck, tests and build on every push.
+44 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), and dashboard metrics (day bucketing, period comparison, org scoping). CI runs lint, typecheck, tests and build on every push.
 
 ## Modules
 
-| Module              | Status  |
-| ------------------- | ------- |
-| Auth, roles & teams | next    |
-| App shell           | planned |
-| Audit log           | planned |
-| Dashboard & reports | planned |
-| Notifications       | planned |
-| Files               | planned |
-| Forms               | planned |
+| Module                                  | Status  |
+| --------------------------------------- | ------- |
+| Auth, roles & teams                     | next    |
+| App shell                               | planned |
+| Audit log                               | planned |
+| [Dashboard & reports](packages/reports) | ✅ v0.1 |
+| Notifications                           | planned |
+| Files                                   | planned |
+| Forms                                   | planned |
 
 ## License
 

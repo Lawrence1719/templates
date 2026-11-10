@@ -21,6 +21,10 @@
   --danger: oklch(0.58 0.22 27);
   --success: oklch(0.6 0.15 150);
   --sidebar: oklch(0.985 0 0);
+  /* Charts: validated single-series accent (dataviz palette slot 1) + recessive ink. */
+  --chart-1: #2a78d6;
+  --chart-muted: oklch(0.82 0 0);
+  --chart-grid: oklch(0.93 0 0);
   --radius: 0.5rem;
 }
 
@@ -37,6 +41,9 @@
   --danger: oklch(0.68 0.19 25);
   --success: oklch(0.72 0.15 150);
   --sidebar: oklch(0.17 0 0);
+  --chart-1: #3987e5;
+  --chart-muted: oklch(0.4 0 0);
+  --chart-grid: oklch(0.24 0 0);
 }
 
 @theme inline {
@@ -52,6 +59,9 @@
   --color-danger: var(--danger);
   --color-success: var(--success);
   --color-sidebar: var(--sidebar);
+  --color-chart-1: var(--chart-1);
+  --color-chart-muted: var(--chart-muted);
+  --color-chart-grid: var(--chart-grid);
   --radius-md: var(--radius);
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
