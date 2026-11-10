@@ -9,6 +9,7 @@ export const statements = {
   ...defaultStatements,
   billing: ["read", "update"],
   audit: ["read"],
+  file: ["read", "upload", "delete"],
 } as const
 
 export const ac = createAccessControl(statements)
@@ -27,11 +28,14 @@ export const admin = ac.newRole({
   ac: ["read"],
   billing: ["read"],
   audit: ["read"],
+  file: ["read", "upload", "delete"],
 })
 
 /** Regular staff: uses the app, cannot manage the org. */
 export const member = ac.newRole({
   ac: ["read"],
+  // Members can delete files they uploaded themselves (checked in the files module).
+  file: ["read", "upload"],
 })
 
 export const roles = { owner, admin, member }

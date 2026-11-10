@@ -12,7 +12,14 @@
         "BETTER_AUTH_URL",
         "NODE_ENV",
         "RESEND_API_KEY",
-        "EMAIL_FROM"
+        "EMAIL_FROM",
+        "S3_ENDPOINT",
+        "S3_BUCKET",
+        "S3_ACCESS_KEY_ID",
+        "S3_SECRET_ACCESS_KEY",
+        "S3_REGION",
+        "FILES_DIR",
+        "MAX_FILE_BYTES"
       ]
     },
     "dev": {

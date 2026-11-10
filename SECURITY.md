@@ -9,6 +9,7 @@
 - **Auth**: hashed passwords, httpOnly + SameSite cookies, origin checks, rate-limited sign-in/up, expiring single-use invitations.
 - **Audit trail**: organization changes are written to an append-only `audit_log`; a database trigger rejects updates and deletes, so history can't be rewritten even by app code.
 - **Notifications** are read and changed only by their recipient in the active org (both IDs come from the session). Emails escape every user-supplied string, and links that leave the app are dropped.
+- **Files**: the type is detected from the bytes (HTML, SVG and executables are refused whatever they're named); storage keys are generated server-side, never from filenames; downloads are sent as attachments with `nosniff` and a sandboxing CSP, and only images/PDF may open inline.
 - **Secrets** are validated at startup and never committed (`.env` is ignored; see `.env.example`).
 
 ## Verified

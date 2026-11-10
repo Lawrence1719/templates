@@ -29,6 +29,9 @@ importers:
       '@templates/db':
         specifier: workspace:*
         version: link:../../packages/db
+      '@templates/files':
+        specifier: workspace:*
+        version: link:../../packages/files
       '@templates/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
@@ -176,6 +179,37 @@ importers:
       drizzle-kit:
         specifier: 0.31.11
         version: 0.31.11
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/files:
+    dependencies:
+      '@templates/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@templates/db':
+        specifier: workspace:*
+        version: link:../db
+      aws4fetch:
+        specifier: 1.0.20
+        version: 1.0.20
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(kysely@0.29.8)(postgres@4.1.0)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@templates/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^24
+        version: 24.19.2
       typescript:
         specifier: ^5
         version: 5.9.3
@@ -336,6 +370,9 @@ importers:
       '@templates/db':
         specifier: workspace:*
         version: link:../packages/db
+      '@templates/files':
+        specifier: workspace:*
+        version: link:../packages/files
       '@templates/notifications':
         specifier: workspace:*
         version: link:../packages/notifications
@@ -1819,6 +1856,9 @@ packages:
   assertion-error@2.0.1:
     resolution: {integrity: sha512-Izi8RQcffqCeNVgFigKli1ssklIbpHnCYc6AknXGYoB6grJqyeby7jv12JUQgmTAnIDnbck1uxksT4dzN3PWBA==}
     engines: {node: '>=12'}
+
+  aws4fetch@1.0.20:
+    resolution: {integrity: sha512-/djoAN709iY65ETD6LKCtyyEI04XIBP5xVvfmNxsEP0uJB5tyaGBztSryRr4HqMStr9R06PisQE7m9zDTXKu6g==}
 
   baseline-browser-mapping@2.11.35:
     resolution: {integrity: sha512-GNk8KX52CHqeNKGk8+7tZnQab/2k1t/BgrUHPKNdijzpEhF1saPQZHVKb6m5loSAxB39gyrTYw34Qf9CQ3u1qQ==}
@@ -3592,6 +3632,8 @@ snapshots:
       tslib: 2.9.1
 
   assertion-error@2.0.1: {}
+
+  aws4fetch@1.0.20: {}
 
   baseline-browser-mapping@2.11.35: {}
 

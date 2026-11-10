@@ -19,6 +19,7 @@
     "typescript": "^5",
     "vitest": "5.1.0",
     "@templates/reports": "workspace:*",
-    "@templates/notifications": "workspace:*"
+    "@templates/notifications": "workspace:*",
+    "@templates/files": "workspace:*"
   }
 }
