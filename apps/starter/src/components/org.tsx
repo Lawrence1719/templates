@@ -1,10 +1,10 @@
 "use client"
 
-import { organization, signOut } from "@templates/auth/client"
+import { organization } from "@templates/auth/client"
+import { Button } from "@templates/ui/button"
+import { ErrorText, Field } from "@templates/ui/form"
 import { useRouter } from "next/navigation"
 import { useState } from "react"
-
-import { Button, ErrorText, Field } from "./ui"
 
 const slugify = (s: string) =>
   s
@@ -41,51 +41,6 @@ export function CreateOrgForm() {
   )
 }
 
-export function OrgSwitcher({
-  orgs,
-  activeId,
-}: {
-  orgs: { id: string; name: string }[]
-  activeId: string
-}) {
-  const router = useRouter()
-  return (
-    <select
-      aria-label="Switch organization"
-      className="h-9 rounded-md border border-neutral-200 bg-transparent px-2 text-sm dark:border-neutral-800"
-      value={activeId}
-      onChange={async (e) => {
-        if (e.target.value === "__new") return router.push("/onboarding")
-        await organization.setActive({ organizationId: e.target.value })
-        router.refresh()
-      }}
-    >
-      {orgs.map((o) => (
-        <option key={o.id} value={o.id}>
-          {o.name}
-        </option>
-      ))}
-      <option value="__new">+ New organization</option>
-    </select>
-  )
-}
-
-export function SignOutButton() {
-  const router = useRouter()
-  return (
-    <Button
-      variant="ghost"
-      onClick={async () => {
-        await signOut()
-        router.replace("/sign-in")
-        router.refresh()
-      }}
-    >
-      Sign out
-    </Button>
-  )
-}
-
 export function InviteForm() {
   const router = useRouter()
   const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null)
@@ -113,14 +68,14 @@ export function InviteForm() {
       <select
         name="role"
         aria-label="Role"
-        className="h-9 rounded-md border border-neutral-200 bg-transparent px-2 text-sm dark:border-neutral-800"
+        className="h-9 rounded-md border bg-transparent px-2 text-sm"
       >
         <option value="member">Member</option>
         <option value="admin">Admin</option>
       </select>
       <Button disabled={pending}>{pending ? "Sending…" : "Invite"}</Button>
       {msg && (
-        <p className={`text-sm sm:col-span-3 ${msg.ok ? "text-green-600" : "text-red-600"}`}>
+        <p className={`text-sm sm:col-span-3 ${msg.ok ? "text-success" : "text-danger"}`}>
           {msg.text}
         </p>
       )}
@@ -145,7 +100,7 @@ export function MemberActions({
       <select
         aria-label="Change role"
         defaultValue={role}
-        className="h-8 rounded-md border border-neutral-200 bg-transparent px-2 text-sm dark:border-neutral-800"
+        className="h-8 rounded-md border bg-transparent px-2 text-sm"
         onChange={async (e) => {
           const { error } = await organization.updateMemberRole({
             memberId,

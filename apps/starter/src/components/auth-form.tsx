@@ -1,11 +1,12 @@
 "use client"
 
 import { signIn, signUp } from "@templates/auth/client"
+import { Button } from "@templates/ui/button"
+import { Card } from "@templates/ui/card"
+import { ErrorText, Field } from "@templates/ui/form"
 import Link from "next/link"
 import { useRouter, useSearchParams } from "next/navigation"
 import { useState } from "react"
-
-import { Button, Card, ErrorText, Field } from "./ui"
 
 export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
   const router = useRouter()
@@ -51,7 +52,7 @@ export function AuthForm({ mode }: { mode: "sign-in" | "sign-up" }) {
           {pending ? "Please wait…" : isSignUp ? "Create account" : "Sign in"}
         </Button>
       </form>
-      <p className="mt-4 text-sm text-neutral-500">
+      <p className="mt-4 text-sm text-muted-foreground">
         {isSignUp ? "Already have an account? " : "No account yet? "}
         <Link
           className="underline"

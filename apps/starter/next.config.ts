@@ -7,7 +7,7 @@ if (existsSync("../../.env")) process.loadEnvFile("../../.env")
 
 const nextConfig: NextConfig = {
   // Workspace packages ship TypeScript source, so Next compiles them.
-  transpilePackages: ["@templates/db", "@templates/auth"],
+  transpilePackages: ["@templates/db", "@templates/auth", "@templates/ui", "@templates/shell"],
 }
 
 export default nextConfig

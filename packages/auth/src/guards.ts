@@ -69,3 +69,11 @@ export function protectedAction<Args extends unknown[], R>(
     return handler(ctx, ...args)
   }
 }
+
+/** True if the current user's role in the active org grants these permissions. */
+export async function can(permissions: Permissions) {
+  const { success } = await auth.api
+    .hasPermission({ headers: await headers(), body: { permissions } })
+    .catch(() => ({ success: false }))
+  return success
+}

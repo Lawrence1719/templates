@@ -15,6 +15,8 @@ apps/starter      demo app with the modules installed
 packages/config   shared TypeScript config
 packages/db       Drizzle client, schema and migrations
 packages/auth     Auth, roles & teams module
+packages/shell    App shell module (sidebar, top bar, theme, ⌘K)
+packages/ui       Shared components and design tokens
 ```
 
 ## Quickstart

@@ -1,0 +1,1 @@
+{ "extends": "@templates/config/tsconfig/nextjs.json", "include": ["src"] }
