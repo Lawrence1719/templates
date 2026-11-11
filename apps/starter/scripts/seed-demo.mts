@@ -11,8 +11,20 @@ import { existsSync } from "node:fs"
 if (existsSync("../../.env")) process.loadEnvFile("../../.env")
 
 const { db } = await import("@templates/db")
-const { auditLog, crmActivity, customer, customerContact, deal, member, organization, user } =
-  await import("@templates/db/schema")
+const {
+  auditLog,
+  crmActivity,
+  customer,
+  customerContact,
+  deal,
+  member,
+  organization,
+  project,
+  task,
+  taskChecklistItem,
+  taskComment,
+  user,
+} = await import("@templates/db/schema")
 const { eq } = await import("drizzle-orm")
 
 const ownerEmail = process.argv.slice(2).find((a) => a.includes("@"))
@@ -258,8 +270,121 @@ for (const [i, [name, tags, status]] of accounts.entries()) {
   }
 }
 
+// ---------- Tasks & projects ----------
+const day = (offset: number) => new Date(now + offset * DAY).toISOString().slice(0, 10)
+const team = [people[0]!, ...people.slice(1, 6)]
+const projectsSeed = [
+  {
+    name: "Second branch opening",
+    description: "Lease, fit-out, hiring and launch for the Makati branch.",
+  },
+  {
+    name: "Year-end close",
+    description: "Inventory count, reconciliations and reports for the auditors.",
+  },
+  { name: "Website refresh", description: "New product pages and online ordering." },
+]
+let taskCount = 0
+for (const [pi, ps] of projectsSeed.entries()) {
+  const [p] = await db
+    .insert(project)
+    .values({ orgId: org.id, ...ps, createdBy: owner.id, createdAt: daysAgo(30 - pi * 8) })
+    .returning()
+  if (!p) continue
+  const titles = [
+    [
+      "Sign the lease",
+      "Order signage",
+      "Hire 4 staff",
+      "Set up POS terminals",
+      "Soft launch",
+      "Opening day promo",
+    ],
+    [
+      "Full stock count",
+      "Reconcile bank accounts",
+      "Chase unpaid invoices",
+      "Prepare audit pack",
+      "File year-end reports",
+    ],
+    [
+      "Write product copy",
+      "Photograph new range",
+      "Set up online payments",
+      "Test checkout on mobile",
+    ],
+  ][pi]!
+  for (const [ti, title] of titles.entries()) {
+    const status = ti < 2 ? "done" : ti === 2 ? "in_progress" : "todo"
+    const [t] = await db
+      .insert(task)
+      .values({
+        orgId: org.id,
+        projectId: p.id,
+        title,
+        status,
+        priority: ti === 3 ? "high" : ti === 4 && pi === 1 ? "urgent" : "normal",
+        assigneeId: team[(ti + pi) % team.length]!.id,
+        dueOn: day(ti * 4 - 6 + pi * 3),
+        completedAt: status === "done" ? daysAgo(6 - ti) : null,
+        createdBy: owner.id,
+        createdAt: daysAgo(25 - ti),
+      })
+      .returning()
+    if (!t) continue
+    taskCount++
+    if (ti === 3)
+      await db.insert(taskChecklistItem).values(
+        ["Get quotes", "Pick a supplier", "Install", "Train staff"].map((text, position) => ({
+          orgId: org.id,
+          taskId: t.id,
+          text,
+          position,
+          done: position < 2,
+        })),
+      )
+    if (ti === 2)
+      await db.insert(taskComment).values({
+        orgId: org.id,
+        taskId: t.id,
+        body: "Two candidates confirmed for interviews on Thursday.",
+        authorId: team[1]!.id,
+        createdAt: daysAgo(2),
+      })
+  }
+}
+// Loose tasks for the owner, so "My tasks" has every bucket.
+const mine: [string, number | null, "low" | "normal" | "high" | "urgent"][] = [
+  ["Approve supplier payments", -2, "urgent"],
+  ["Review weekly sales report", 0, "high"],
+  ["Call Bluebay Foods about renewal", 0, "normal"],
+  ["Update staff schedule", 3, "normal"],
+  ["Renew business permit", 20, "high"],
+  ["Read the new tax guidelines", null, "low"],
+]
+for (const [title, offset, priority] of mine) {
+  await db.insert(task).values({
+    orgId: org.id,
+    title,
+    priority,
+    assigneeId: owner.id,
+    dueOn: offset === null ? null : day(offset),
+    createdBy: people[1]!.id,
+  })
+  taskCount++
+}
+await db.insert(task).values({
+  orgId: org.id,
+  title: "Weekly cash count",
+  assigneeId: owner.id,
+  dueOn: day(1),
+  recurrence: "weekly",
+  createdBy: owner.id,
+})
+taskCount++
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries and ${crmCount} customers.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers and ${taskCount} tasks.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)

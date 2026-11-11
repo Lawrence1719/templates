@@ -14,6 +14,8 @@ export const statements = {
   response: ["read"],
   customer: ["read", "write", "delete"],
   deal: ["read", "write", "delete"],
+  project: ["read", "manage"],
+  task: ["read", "write", "delete"],
 } as const
 
 export const ac = createAccessControl(statements)
@@ -37,6 +39,8 @@ export const admin = ac.newRole({
   response: ["read"],
   customer: ["read", "write", "delete"],
   deal: ["read", "write", "delete"],
+  project: ["read", "manage"],
+  task: ["read", "write", "delete"],
 })
 
 /** Regular staff: uses the app, cannot manage the org. */
@@ -49,6 +53,9 @@ export const member = ac.newRole({
   // Members work customers and deals day to day; deleting them is for admins.
   customer: ["read", "write"],
   deal: ["read", "write"],
+  // Members create and work tasks; they can delete tasks they created (checked in the tasks module).
+  project: ["read"],
+  task: ["read", "write"],
 })
 
 export const roles = { owner, admin, member }

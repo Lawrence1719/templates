@@ -2,7 +2,9 @@ import type { NavGroup } from "@templates/shell"
 import {
   Bell,
   Building2,
+  CheckSquare,
   ClipboardList,
+  FolderKanban,
   FolderOpen,
   Handshake,
   LayoutDashboard,
@@ -44,6 +46,20 @@ export const nav: NavGroup[] = [
   {
     label: "Workspace",
     items: [
+      {
+        title: "Tasks",
+        href: "/tasks",
+        icon: CheckSquare,
+        permission: { task: ["read"] },
+        keywords: ["todo", "to-do", "assignments", "my tasks", "checklist"],
+      },
+      {
+        title: "Projects",
+        href: "/projects",
+        icon: FolderKanban,
+        permission: { project: ["read"] },
+        keywords: ["board", "kanban", "progress"],
+      },
       {
         title: "Files",
         href: "/files",

@@ -12,6 +12,7 @@
 - **Files**: the type is detected from the bytes (HTML, SVG and executables are refused whatever they're named); storage keys are generated server-side, never from filenames; downloads are sent as attachments with `nosniff` and a sandboxing CSP, and only images/PDF may open inline.
 - **Public forms** validate every answer server-side against the form definition (unknown keys rejected), use a honeypot and a per-IP rate limit, and store IPs only as salted hashes.
 - **CRM** records reference their customer by `(customer_id, org_id)` with composite foreign keys, so the database itself refuses cross-org links; owners must be org members; only `http(s)` websites are stored; money is stored as integer cents.
+- **Tasks** use the same composite `(…, org_id)` foreign keys for projects, checklist items and comments; assignees must be members; repeating tasks spawn their next occurrence once, inside a transaction.
 - **Secrets** are validated at startup and never committed (`.env` is ignored; see `.env.example`).
 
 ## Verified
@@ -37,6 +38,7 @@ These, and more, run automatically in [`tests/`](tests) on every push (see CI):
 | Files         | disguised and dangerous types rejected; path-traversal names sanitized; text never served inline; other orgs get 404 on list/download/delete; members delete only their own files; bytes removed on delete                                                              |
 | Forms         | invalid/extra answers rejected; drafts and closed forms refuse responses; honeypot drops bots; 6th submission per IP is 429; raw IPs never stored; members-only forms refuse guests and outsiders; other orgs get 404; CSV formulas neutralized                         |
 | CRM           | another org gets 404 on read/update/delete/attach; database rejects cross-org child rows; owners must be members; `javascript:` websites rejected; LIKE characters literal; amounts parsed without floats; automatic history can't be deleted; CSV formulas neutralized |
+| Tasks         | another org gets 404 on every task/project action; database rejects cross-org checklist rows; can't file into another org's or an archived project; members delete only their own tasks and comments; repeats never duplicate; LIKE characters literal                  |
 | Dashboard     | metrics count only the active org's rows                                                                                                                                                                                                                                |
 
 **Note:** Better Auth disables its origin check when `NODE_ENV=test`. This project sets `disableOriginCheck: false` explicitly so the protection is always on — and tested.

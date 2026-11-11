@@ -29,6 +29,21 @@ export const notificationTypes = {
     description: "Sent to owners and admins.",
     defaults: { inApp: true, email: false },
   },
+  "task.assigned": {
+    label: "A task is assigned to you",
+    description: "When someone else assigns you a task.",
+    defaults: { inApp: true, email: true },
+  },
+  "task.commented": {
+    label: "Someone comments on your task",
+    description: "Tasks you created or are assigned to.",
+    defaults: { inApp: true, email: false },
+  },
+  "task.completed": {
+    label: "A task you created is done",
+    description: "When someone else completes it.",
+    defaults: { inApp: true, email: false },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",
