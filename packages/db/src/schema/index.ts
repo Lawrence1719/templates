@@ -1,5 +1,6 @@
 export * from "./audit"
 export * from "./auth"
+export * from "./crm"
 export * from "./files"
 export * from "./forms"
 export * from "./notifications"

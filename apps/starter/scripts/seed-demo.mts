@@ -11,7 +11,8 @@ import { existsSync } from "node:fs"
 if (existsSync("../../.env")) process.loadEnvFile("../../.env")
 
 const { db } = await import("@templates/db")
-const { auditLog, member, organization, user } = await import("@templates/db/schema")
+const { auditLog, crmActivity, customer, customerContact, deal, member, organization, user } =
+  await import("@templates/db/schema")
 const { eq } = await import("drizzle-orm")
 
 const ownerEmail = process.argv.slice(2).find((a) => a.includes("@"))
@@ -148,8 +149,117 @@ for (let d = 89; d >= 0; d--) {
 }
 for (let i = 0; i < rows.length; i += 500) await db.insert(auditLog).values(rows.slice(i, i + 500))
 
+// ---------- CRM: customers, contacts, deals and timelines ----------
+const reps = people.slice(0, 6)
+const accounts = [
+  ["Bluebay Foods", "wholesale, food", "active"],
+  ["Kestrel Labs", "software", "active"],
+  ["Harbor & Co", "retail", "active"],
+  ["Pinecrest Clinics", "healthcare, vip", "active"],
+  ["Sunline Retail", "retail", "lead"],
+  ["Atlas Hardware", "wholesale", "active"],
+  ["Mariner Logistics", "logistics", "lead"],
+  ["Orchid Hotels", "hospitality, vip", "active"],
+  ["Copperleaf Cafe", "food", "lead"],
+  ["Granite Builders", "construction", "inactive"],
+  ["Lumen Studio", "creative", "lead"],
+  ["Northstar Schools", "education", "active"],
+] as const
+const roles = ["Owner", "Operations Manager", "Purchasing", "Finance Lead", "CEO"]
+const dealNames = [
+  "Annual supply contract",
+  "Pilot program",
+  "Website rebuild",
+  "Q3 restock",
+  "Support plan",
+  "Expansion",
+]
+const notes = [
+  ["call", "Intro call. Interested in monthly delivery, wants pricing by Friday."],
+  ["email", "Sent the proposal and the product sheet."],
+  ["meeting", "Site visit with the operations team. They want a trial in two branches."],
+  ["note", "Decision maker is the finance lead. Budget approved for next quarter."],
+  ["call", "Follow-up: asked for net-30 terms."],
+] as const
+let crmCount = 0
+for (const [i, [name, tags, status]] of accounts.entries()) {
+  const owner = reps[i % reps.length]!
+  const created = daysAgo(80 - i * 6)
+  const domain = name.toLowerCase().replace(/[^a-z]+/g, "")
+  const [c] = await db
+    .insert(customer)
+    .values({
+      orgId: org.id,
+      kind: "company",
+      name,
+      email: `hello@${domain}.example`,
+      phone: `+1 555 01${String(10 + i).padStart(2, "0")}`,
+      website: `https://${domain}.example`,
+      status,
+      ownerId: owner.id,
+      tags: tags.split(", "),
+      createdBy: owner.id,
+      createdAt: created,
+      updatedAt: daysAgo(Math.max(0, 40 - i * 3)),
+    })
+    .returning()
+  if (!c) continue
+  crmCount++
+  const contactCount = 1 + (i % 3)
+  for (let k = 0; k < contactCount; k++) {
+    const person = `${pick(first)} ${pick(last)}`
+    await db.insert(customerContact).values({
+      orgId: org.id,
+      customerId: c.id,
+      name: person,
+      title: roles[(i + k) % roles.length],
+      email: `${person.toLowerCase().replace(/\W+/g, ".")}@${domain}.example`,
+      isPrimary: k === 0,
+    })
+  }
+  await db.insert(crmActivity).values({
+    orgId: org.id,
+    customerId: c.id,
+    kind: "system",
+    body: `${owner.name} added ${name}`,
+    createdBy: owner.id,
+    occurredAt: created,
+  })
+  for (let k = 0; k < 2 + (i % 3); k++) {
+    const [kind, body] = notes[(i + k) % notes.length]!
+    await db.insert(crmActivity).values({
+      orgId: org.id,
+      customerId: c.id,
+      kind,
+      body,
+      createdBy: owner.id,
+      occurredAt: daysAgo(Math.max(1, 70 - i * 5 - k * 6)),
+    })
+  }
+  if (status === "inactive") continue
+  const stages = ["new", "qualified", "proposal", "won", "lost"] as const
+  for (let k = 0; k < 1 + (i % 2); k++) {
+    const stage = stages[(i + k * 2) % stages.length]!
+    const closed = stage === "won" || stage === "lost"
+    const close = new Date(now + (((i * 7 + k * 11) % 60) - 15) * DAY).toISOString().slice(0, 10)
+    await db.insert(deal).values({
+      orgId: org.id,
+      customerId: c.id,
+      title: dealNames[(i + k) % dealNames.length]!,
+      valueCents: (1500 + ((i * 3917 + k * 2711) % 48000)) * 100,
+      currency: i % 5 === 4 ? "EUR" : "USD",
+      stage,
+      ownerId: owner.id,
+      expectedCloseOn: close,
+      closedAt: closed ? daysAgo(5 + i) : null,
+      createdBy: owner.id,
+      createdAt: daysAgo(40 - i),
+    })
+  }
+}
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members and ${rows.length} activity entries.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries and ${crmCount} customers.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)

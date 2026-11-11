@@ -25,6 +25,7 @@ packages/reports  Dashboard & reports module (KPI tiles, trends, breakdowns)
 packages/notifications  In-app + email notifications with preferences
 packages/files    Uploads with type checking, S3 or local storage
 packages/forms    Form builder, public share links, responses
+packages/crm      Customers, contacts, deals pipeline, timeline
 ```
 
 ## Quickstart
@@ -46,11 +47,13 @@ docker compose up -d
 pnpm test
 ```
 
-120 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), dashboard metrics (day bucketing, period comparison, org scoping), notifications (right recipients, preferences, inbox isolation, email escaping), files (type detection, name sanitizing, org isolation, delete rights), and forms (validation, spam protection, members-only access, org isolation). CI runs lint, typecheck, tests and build on every push.
+151 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), dashboard metrics (day bucketing, period comparison, org scoping), notifications (right recipients, preferences, inbox isolation, email escaping), files (type detection, name sanitizing, org isolation, delete rights), forms (validation, spam protection, members-only access, org isolation), and the CRM (search, pipeline moves, money parsing, owner checks, database-level tenant links). CI runs lint, typecheck, tests and build on every push.
 
 ## Modules
 
-All seven core modules are done. Each has its own README with features, setup and security notes.
+All seven core modules are done; business modules are shipping now. Everything is MIT-licensed. Each module has its own README with features, setup and security notes.
+
+### Core
 
 | Module                                  | What it gives you                                                            | Status  |
 | --------------------------------------- | ---------------------------------------------------------------------------- | ------- |
@@ -61,6 +64,20 @@ All seven core modules are done. Each has its own README with features, setup an
 | [Notifications](packages/notifications) | In-app bell, inbox, email, per-user preferences                              | ✅ v0.1 |
 | [Files](packages/files)                 | Uploads with type checking, S3 or local storage                              | ✅ v0.1 |
 | [Forms](packages/forms)                 | Form builder, public share links, responses                                  | ✅ v0.1 |
+
+### Business
+
+| Module                | What it gives you                                                  | Status    |
+| --------------------- | ------------------------------------------------------------------ | --------- |
+| [CRM](packages/crm)   | Customers, contacts, deals pipeline, activity timeline, CSV export | ✅ v0.1   |
+| Tasks & projects      | Assignments, checklists, due dates, recurring work                 | 🔜 next   |
+| Invoicing & payments  | Quotes, invoices, payment tracking, reminders                      | 🗓 planned |
+| Inventory             | Stock levels, movements, locations, low-stock alerts               | 🗓 planned |
+| Orders & sales        | Order workflow from request to fulfillment                         | 🗓 planned |
+| Scheduling & bookings | Calendars, time slots, confirmations                               | 🗓 planned |
+| Point of sale         | Cart, receipts, cash drawer, shift reports                         | 🗓 planned |
+| Staff & HR            | Employee records, attendance, leave                                | 🗓 planned |
+| Memberships           | Plans, renewals, member check-in                                   | 🗓 planned |
 
 ## License
 

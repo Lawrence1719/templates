@@ -19,6 +19,16 @@ export const notificationTypes = {
     description: "Sent to owners and admins.",
     defaults: { inApp: true, email: false },
   },
+  "crm.assigned": {
+    label: "A customer or deal is assigned to you",
+    description: "When someone else makes you the owner.",
+    defaults: { inApp: true, email: true },
+  },
+  "deal.won": {
+    label: "A deal is won",
+    description: "Sent to owners and admins.",
+    defaults: { inApp: true, email: false },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",

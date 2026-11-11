@@ -25,7 +25,8 @@
     "@templates/notifications": "workspace:*",
     "zod": "4.6.7",
     "@templates/files": "workspace:*",
-    "@templates/forms": "workspace:*"
+    "@templates/forms": "workspace:*",
+    "@templates/crm": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",

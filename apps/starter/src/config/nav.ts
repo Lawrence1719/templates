@@ -4,9 +4,11 @@ import {
   Building2,
   ClipboardList,
   FolderOpen,
+  Handshake,
   LayoutDashboard,
   ScrollText,
   UserRound,
+  Users,
 } from "lucide-react"
 
 /**
@@ -18,6 +20,30 @@ export const nav: NavGroup[] = [
     items: [
       { title: "Dashboard", href: "/dashboard", icon: LayoutDashboard, keywords: ["home"] },
       { title: "Notifications", href: "/notifications", icon: Bell, keywords: ["inbox", "alerts"] },
+    ],
+  },
+  {
+    label: "Sales",
+    items: [
+      {
+        title: "Customers",
+        href: "/customers",
+        icon: Users,
+        permission: { customer: ["read"] },
+        keywords: ["crm", "clients", "contacts", "companies", "leads"],
+      },
+      {
+        title: "Deals",
+        href: "/deals",
+        icon: Handshake,
+        permission: { deal: ["read"] },
+        keywords: ["pipeline", "sales", "opportunities"],
+      },
+    ],
+  },
+  {
+    label: "Workspace",
+    items: [
       {
         title: "Files",
         href: "/files",

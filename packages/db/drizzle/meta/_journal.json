@@ -43,6 +43,13 @@
       "when": 1794329328946,
       "tag": "0005_forms",
       "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "7",
+      "when": 1794356085564,
+      "tag": "0006_crm",
+      "breakpoints": true
     }
   ]
 }

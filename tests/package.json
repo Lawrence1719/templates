@@ -21,6 +21,7 @@
     "@templates/reports": "workspace:*",
     "@templates/notifications": "workspace:*",
     "@templates/files": "workspace:*",
-    "@templates/forms": "workspace:*"
+    "@templates/forms": "workspace:*",
+    "@templates/crm": "workspace:*"
   }
 }

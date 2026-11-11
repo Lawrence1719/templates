@@ -12,6 +12,8 @@ export const statements = {
   file: ["read", "upload", "delete"],
   form: ["read", "manage"],
   response: ["read"],
+  customer: ["read", "write", "delete"],
+  deal: ["read", "write", "delete"],
 } as const
 
 export const ac = createAccessControl(statements)
@@ -33,6 +35,8 @@ export const admin = ac.newRole({
   file: ["read", "upload", "delete"],
   form: ["read", "manage"],
   response: ["read"],
+  customer: ["read", "write", "delete"],
+  deal: ["read", "write", "delete"],
 })
 
 /** Regular staff: uses the app, cannot manage the org. */
@@ -42,6 +46,9 @@ export const member = ac.newRole({
   file: ["read", "upload"],
   // Members can fill in members-only forms; managing forms and reading responses is for admins.
   form: ["read"],
+  // Members work customers and deals day to day; deleting them is for admins.
+  customer: ["read", "write"],
+  deal: ["read", "write"],
 })
 
 export const roles = { owner, admin, member }
