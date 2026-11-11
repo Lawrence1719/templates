@@ -13,6 +13,7 @@ import {
   ReceiptText,
   ScrollText,
   ShoppingCart,
+  Store,
   UserRound,
   Users,
 } from "lucide-react"
@@ -51,6 +52,13 @@ export const nav: NavGroup[] = [
         icon: ShoppingCart,
         permission: { order: ["read"] },
         keywords: ["sales orders", "fulfillment", "shipping", "delivery"],
+      },
+      {
+        title: "Point of sale",
+        href: "/pos",
+        icon: Store,
+        permission: { pos: ["read"] },
+        keywords: ["pos", "till", "register", "checkout", "cash", "receipt", "shift", "retail"],
       },
       {
         title: "Invoices",

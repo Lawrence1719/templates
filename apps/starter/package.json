@@ -31,7 +31,8 @@
     "@templates/invoicing": "workspace:*",
     "@templates/inventory": "workspace:*",
     "@templates/orders": "workspace:*",
-    "@templates/bookings": "workspace:*"
+    "@templates/bookings": "workspace:*",
+    "@templates/pos": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",

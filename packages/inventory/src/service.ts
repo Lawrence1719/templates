@@ -719,6 +719,63 @@ export async function issueMany(
   return tx ? run(tx) : db.transaction(run)
 }
 
+/**
+ * Puts several products back at one location (a customer return) in one
+ * transaction. Pass `tx` to make it part of a bigger one (a refund). Archived
+ * products can still come back: the stock is real.
+ */
+export async function restockMany(
+  ctx: InventoryContext,
+  input: {
+    locationId: string
+    items: { productId: string; quantityMilli: number }[]
+    reference?: string | null
+    note?: string | null
+  },
+  tx?: Tx,
+) {
+  const run = async (t: Tx) => {
+    const loc = await ownLocationTx(t, ctx, input.locationId)
+    const want = new Map<string, number>()
+    for (const i of input.items) {
+      if (!Number.isInteger(i.quantityMilli) || i.quantityMilli <= 0)
+        throw invalid({ quantity: "Quantities must be more than zero" })
+      want.set(i.productId, (want.get(i.productId) ?? 0) + i.quantityMilli)
+    }
+    const ids = [...want.keys()].sort()
+    if (!ids.length) return []
+    const products = await t
+      .select({ id: product.id, unit: product.unit })
+      .from(product)
+      .where(and(eq(product.orgId, ctx.orgId), inArray(product.id, ids)))
+    if (products.length !== ids.length) throw notFound()
+    const unit = new Map(products.map((p) => [p.id, p.unit]))
+    const movements = []
+    for (const id of ids) {
+      const current = await lockLevel(t, ctx.orgId, id, loc.id)
+      movements.push(
+        await apply(
+          t,
+          ctx,
+          {
+            productId: id,
+            locationId: loc.id,
+            kind: "receive",
+            delta: want.get(id) ?? 0,
+            reason: "customer_return",
+            reference: input.reference,
+            note: input.note,
+          },
+          current,
+          unit.get(id) ?? "",
+        ),
+      )
+    }
+    return movements
+  }
+  return tx ? run(tx) : db.transaction(run)
+}
+
 type LowCandidate = {
   product: { id: string; sku: string; name: string; unit: string; reorderPointMilli: number }
   before: number

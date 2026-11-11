@@ -113,6 +113,20 @@
       "when": 1794367319017,
       "tag": "0015_booking_no_overlap",
       "breakpoints": true
+    },
+    {
+      "idx": 16,
+      "version": "7",
+      "when": 1794372776747,
+      "tag": "0016_pos",
+      "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "7",
+      "when": 1794372777168,
+      "tag": "0017_pos_locks",
+      "breakpoints": true
     }
   ]
 }

@@ -79,6 +79,11 @@ export const notificationTypes = {
     description: "Sent to the staff member booked, or to owners and admins.",
     defaults: { inApp: true, email: true },
   },
+  "pos.cash_variance": {
+    label: "A till closes short or over",
+    description: "When a counted drawer doesn't match. Sent to owners and admins.",
+    defaults: { inApp: true, email: true },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",

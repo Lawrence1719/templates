@@ -18,6 +18,7 @@ export {
   productCategories,
   receiveStock,
   reorderList,
+  restockMany,
   sendLowStockAlerts,
   setLocationStatus,
   setProductStatus,

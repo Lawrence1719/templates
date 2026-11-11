@@ -30,6 +30,14 @@ const {
   orderSettings,
   organization,
   payment,
+  posPayment,
+  posRefund,
+  posRefundLine,
+  posRegister,
+  posSale,
+  posSaleLine,
+  posSettings,
+  posShift,
   product,
   project,
   salesOrder,
@@ -49,6 +57,7 @@ const {
   addDays: addDay,
   today: todayIn,
 } = await import("@templates/bookings/definitions")
+const { computeCart } = await import("@templates/pos/definitions")
 
 const ownerEmail = process.argv.slice(2).find((a) => a.includes("@"))
 if (!ownerEmail) throw new Error("Usage: seed:demo -- <owner-email>")
@@ -853,8 +862,267 @@ if (ana && room && tasting && training) {
   }
 }
 
+// ---------- Point of sale ----------
+const POS_TAX = { taxRateBp: 1200, pricesIncludeTax: true }
+const menu = [
+  ["CAFE-LATTE-12", "Latte 12oz", 450, 400],
+  ["CAFE-COLDBREW-16", "Cold brew 16oz", 500, 300],
+  ["CAFE-CROISSANT", "Butter croissant", 325, 150],
+  ["CAFE-COOKIE", "Choc chip cookie", 175, 150],
+] as const
+let posSales = 0
+let posShifts = 0
+if (storeA && storeB) {
+  await db.insert(posSettings).values({
+    orgId: org.id,
+    currency: "USD",
+    taxRateBp: POS_TAX.taxRateBp,
+    pricesIncludeTax: true,
+    maxDiscountBp: 1000,
+    timeZone: TZ,
+    receiptHeader: "Northwind Coffee\n88 Ayala Ave, Makati",
+    receiptFooter: "Thank you! Returns within 7 days with this receipt.",
+  })
+  const items: { id: string; name: string; priceCents: number }[] = []
+  const level = new Map<string, number>()
+  for (const [sku, name, price, qty] of menu) {
+    const [p] = await db
+      .insert(product)
+      .values({
+        orgId: org.id,
+        sku,
+        name,
+        category: "Cafe",
+        unit: "pcs",
+        currency: "USD",
+        priceCents: price,
+        costCents: Math.round(price * 0.3),
+      })
+      .returning()
+    if (!p) continue
+    items.push(p)
+    productCount++
+    for (const loc of [storeA.id, storeB.id]) {
+      level.set(`${p.id}:${loc}`, qty * 1000)
+      await db.insert(stockMovement).values({
+        orgId: org.id,
+        productId: p.id,
+        locationId: loc,
+        kind: "receive",
+        quantityMilli: qty * 1000,
+        balanceAfterMilli: qty * 1000,
+        reference: "Opening stock",
+        createdBy: owner.id,
+        createdAt: daysAgo(10),
+      })
+    }
+  }
+  const registers = await db
+    .insert(posRegister)
+    .values([
+      { orgId: org.id, name: "Makati counter", locationId: storeA.id },
+      { orgId: org.id, name: "BGC counter", locationId: storeB.id },
+    ])
+    .returning()
+  let receipt = 0
+  const t0 = todayIn(TZ)
+  const plan: [number, number, number][] = [
+    // [register, days ago, sales]
+    [0, 6, 9],
+    [0, 5, 11],
+    [0, 4, 8],
+    [0, 3, 12],
+    [0, 2, 10],
+    [0, 1, 9],
+    [1, 3, 6],
+    [1, 2, 7],
+    [1, 1, 5],
+    [0, 0, 6],
+  ]
+  for (const [ri, d, n] of plan) {
+    const reg = registers[ri]
+    const opened = zonedToUtc(addDay(t0, -d), 7 * 60 + 45, TZ)
+    if (!reg || !opened) continue
+    const cashier = people[((ri + d) % 3) + 1] ?? owner
+    const float = 5000
+    const [shift] = await db
+      .insert(posShift)
+      .values({
+        orgId: org.id,
+        registerId: reg.id,
+        openingFloatCents: float,
+        openedBy: cashier.id,
+        openedAt: opened,
+      })
+      .returning()
+    if (!shift) continue
+    posShifts++
+    let cash = float
+    let firstCardSale: { id: string; lineId: string; totalCents: number } | null = null
+    for (let k = 0; k < n; k++) {
+      const at = new Date(opened.getTime() + (30 + k * 45 + Math.random() * 20) * 60_000)
+      if (d === 0 && at.getTime() > now) break
+      const picks = [...items]
+        .sort(() => Math.random() - 0.5)
+        .slice(0, 1 + Math.floor(Math.random() * 3))
+      const cart = computeCart(
+        picks.map((p) => ({
+          productId: p.id,
+          description: p.name,
+          quantityMilli: (1 + Math.floor(Math.random() * 2)) * 1000,
+          unitPriceCents: p.priceCents,
+          discountBp: 0,
+        })),
+        POS_TAX,
+      )
+      const number = `R-${String(++receipt).padStart(5, "0")}`
+      const [sale] = await db
+        .insert(posSale)
+        .values({
+          orgId: org.id,
+          number,
+          clientKey: crypto.randomUUID(),
+          shiftId: shift.id,
+          registerId: reg.id,
+          currency: "USD",
+          subtotalCents: cart.subtotalCents,
+          discountCents: cart.discountCents,
+          taxCents: cart.taxCents,
+          totalCents: cart.totalCents,
+          cashierId: cashier.id,
+          createdAt: at,
+        })
+        .returning()
+      if (!sale) continue
+      posSales++
+      const lines = await db
+        .insert(posSaleLine)
+        .values(
+          cart.lines.map((l, position) => ({
+            orgId: org.id,
+            saleId: sale.id,
+            position,
+            productId: l.productId,
+            description: l.description,
+            quantityMilli: l.quantityMilli,
+            unitPriceCents: l.unitPriceCents,
+            discountBp: 0,
+            discountCents: 0,
+            taxRateBp: l.taxRateBp,
+            taxCents: l.taxCents,
+            totalCents: l.totalCents,
+          })),
+        )
+        .returning()
+      for (const l of cart.lines) {
+        const key = `${l.productId}:${reg.locationId}`
+        const after = (level.get(key) ?? 0) - l.quantityMilli
+        level.set(key, after)
+        await db.insert(stockMovement).values({
+          orgId: org.id,
+          productId: l.productId,
+          locationId: reg.locationId,
+          kind: "issue",
+          quantityMilli: -l.quantityMilli,
+          balanceAfterMilli: after,
+          reason: "sold",
+          reference: number,
+          createdBy: cashier.id,
+          createdAt: at,
+        })
+      }
+      if (Math.random() < 0.55) {
+        const tendered = Math.ceil(sale.totalCents / 500) * 500
+        await db.insert(posPayment).values({
+          orgId: org.id,
+          saleId: sale.id,
+          tender: "cash",
+          amountCents: sale.totalCents,
+          tenderedCents: tendered,
+          changeCents: tendered - sale.totalCents,
+        })
+        cash += sale.totalCents
+      } else {
+        await db.insert(posPayment).values({
+          orgId: org.id,
+          saleId: sale.id,
+          tender: "card",
+          amountCents: sale.totalCents,
+          tenderedCents: sale.totalCents,
+          reference: `VISA ${1000 + Math.floor(Math.random() * 9000)}`,
+        })
+        if (!firstCardSale && lines[0])
+          firstCardSale = { id: sale.id, lineId: lines[0].id, totalCents: lines[0].totalCents }
+      }
+    }
+    // One card refund two days ago, so the refund screens have something to show.
+    if (d === 2 && ri === 0 && firstCardSale) {
+      const [r] = await db
+        .insert(posRefund)
+        .values({
+          orgId: org.id,
+          saleId: firstCardSale.id,
+          shiftId: shift.id,
+          tender: "card",
+          amountCents: firstCardSale.totalCents,
+          reason: "Wrong order",
+          restocked: false,
+          createdBy: owner.id,
+          createdAt: new Date(opened.getTime() + 6 * 3_600_000),
+        })
+        .returning()
+      if (r) {
+        const [line] = await db
+          .select()
+          .from(posSaleLine)
+          .where(eq(posSaleLine.id, firstCardSale.lineId))
+        await db.insert(posRefundLine).values({
+          orgId: org.id,
+          refundId: r.id,
+          saleLineId: firstCardSale.lineId,
+          quantityMilli: line?.quantityMilli ?? 1000,
+          amountCents: firstCardSale.totalCents,
+        })
+        await db
+          .update(posSaleLine)
+          .set({
+            refundedQtyMilli: line?.quantityMilli ?? 1000,
+            refundedCents: firstCardSale.totalCents,
+          })
+          .where(eq(posSaleLine.id, firstCardSale.lineId))
+        await db
+          .update(posSale)
+          .set({ refundedCents: firstCardSale.totalCents })
+          .where(eq(posSale.id, firstCardSale.id))
+      }
+    }
+    if (d === 0) continue // Today's shift stays open.
+    const counted = d === 3 && ri === 0 ? cash - 250 : cash
+    await db
+      .update(posShift)
+      .set({
+        status: "closed",
+        expectedCashCents: cash,
+        countedCashCents: counted,
+        varianceCents: counted - cash,
+        closingNote: counted !== cash ? "Busy lunch rush" : null,
+        closedBy: cashier.id,
+        closedAt: new Date(opened.getTime() + 10 * 3_600_000),
+      })
+      .where(eq(posShift.id, shift.id))
+  }
+  for (const [key, qty] of level) {
+    const [productId, locationId] = key.split(":") as [string, string]
+    await db.insert(stockLevel).values({ orgId: org.id, productId, locationId, quantityMilli: qty })
+  }
+  await db
+    .update(posSettings)
+    .set({ nextNumber: receipt + 1 })
+    .where(eq(posSettings.orgId, org.id))
+}
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products, ${orderSeed.length} orders and ${bookingCount} bookings.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products, ${orderSeed.length} orders, ${bookingCount} bookings and ${posSales} till sales over ${posShifts} shifts.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)
