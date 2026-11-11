@@ -17,8 +17,12 @@ const {
   customer,
   customerContact,
   deal,
+  invoice,
+  invoiceLine,
+  invoiceSettings,
   member,
   organization,
+  payment,
   project,
   task,
   taskChecklistItem,
@@ -26,6 +30,7 @@ const {
   user,
 } = await import("@templates/db/schema")
 const { eq } = await import("drizzle-orm")
+const { computeTotals } = await import("@templates/invoicing/definitions")
 
 const ownerEmail = process.argv.slice(2).find((a) => a.includes("@"))
 if (!ownerEmail) throw new Error("Usage: seed:demo -- <owner-email>")
@@ -194,6 +199,7 @@ const notes = [
   ["call", "Follow-up: asked for net-30 terms."],
 ] as const
 let crmCount = 0
+const customerIds: string[] = []
 for (const [i, [name, tags, status]] of accounts.entries()) {
   const owner = reps[i % reps.length]!
   const created = daysAgo(80 - i * 6)
@@ -217,6 +223,7 @@ for (const [i, [name, tags, status]] of accounts.entries()) {
     .returning()
   if (!c) continue
   crmCount++
+  customerIds.push(c.id)
   const contactCount = 1 + (i % 3)
   for (let k = 0; k < contactCount; k++) {
     const person = `${pick(first)} ${pick(last)}`
@@ -383,8 +390,111 @@ await db.insert(task).values({
 })
 taskCount++
 
+// ---------- Invoices & quotes ----------
+await db.insert(invoiceSettings).values({
+  orgId: org.id,
+  businessName: "Northwind Trading Inc.",
+  businessDetails: "88 Ayala Ave, Makati City\nTIN 123-456-789-000",
+  paymentInstructions: "BDO Unibank · Account 0012-3456-7890 · Northwind Trading Inc.",
+  footer: "Thank you for your business.",
+  defaultTaxRateBp: 1200,
+  defaultCurrency: "USD",
+})
+const catalog = [
+  ["Monthly supply: coffee beans (kg)", 4500],
+  ["Delivery and handling", 2500],
+  ["Barista training session", 18000],
+  ["Espresso machine service", 9500],
+  ["Paper cups (case of 1,000)", 6200],
+] as const
+const docs: {
+  kind: "invoice" | "quote"
+  issued: number
+  due: number
+  paid?: "full" | "part"
+  status?: string
+}[] = [
+  { kind: "invoice", issued: -50, due: -20, paid: "full" },
+  { kind: "invoice", issued: -40, due: -10, paid: "full" },
+  { kind: "invoice", issued: -35, due: -5 },
+  { kind: "invoice", issued: -25, due: -2, paid: "part" },
+  { kind: "invoice", issued: -12, due: 18, paid: "part" },
+  { kind: "invoice", issued: -6, due: 24 },
+  { kind: "invoice", issued: -2, due: 28 },
+  { kind: "invoice", issued: 0, due: 30, status: "draft" },
+  { kind: "quote", issued: -20, due: 10, status: "accepted" },
+  { kind: "quote", issued: -4, due: 26 },
+  { kind: "quote", issued: -1, due: 29, status: "draft" },
+]
+let invNo = 0
+let quoteNo = 0
+for (const [i, d] of docs.entries()) {
+  const lines = computeTotals(
+    [0, 1, 2].slice(0, 1 + (i % 3)).map((k) => {
+      const [description, price] = catalog[(i + k) % catalog.length]!
+      return {
+        description,
+        quantityMilli: (1 + ((i + k) % 4)) * 1000,
+        unitPriceCents: price,
+        taxRateBp: 1200,
+      }
+    }),
+  )
+  const [row] = await db
+    .insert(invoice)
+    .values({
+      orgId: org.id,
+      kind: d.kind,
+      customerId: customerIds[i % customerIds.length]!,
+      issueDate: day(d.issued),
+      dueOn: day(d.due),
+      currency: "USD",
+      subtotalCents: lines.subtotalCents,
+      taxCents: lines.taxCents,
+      totalCents: lines.totalCents,
+      terms: d.kind === "quote" ? "Prices valid for 30 days." : "Payment due within 30 days.",
+      createdBy: owner.id,
+      createdAt: daysAgo(-d.issued),
+    })
+    .returning()
+  if (!row) continue
+  // Lines go in while it's a draft: the database refuses them once it's sent.
+  await db
+    .insert(invoiceLine)
+    .values(
+      lines.lines.map((l, position) => ({ ...l, position, orgId: org.id, invoiceId: row.id })),
+    )
+  if (d.status === "draft") continue
+  const n = d.kind === "invoice" ? ++invNo : ++quoteNo
+  await db
+    .update(invoice)
+    .set({
+      status: d.status === "accepted" ? "accepted" : "sent",
+      number: `${d.kind === "invoice" ? "INV-" : "QUO-"}${String(n).padStart(4, "0")}`,
+      sentAt: daysAgo(-d.issued),
+      publicToken: crypto.randomUUID().replace(/-/g, "").slice(0, 24),
+    })
+    .where(eq(invoice.id, row.id))
+  if (d.paid) {
+    const amount = d.paid === "full" ? lines.totalCents : Math.round(lines.totalCents / 2)
+    await db.insert(payment).values({
+      orgId: org.id,
+      invoiceId: row.id,
+      amountCents: amount,
+      paidOn: day(d.paid === "full" ? d.due - 3 : d.issued + 5),
+      method: i % 2 ? "bank_transfer" : "card",
+      createdBy: owner.id,
+    })
+    await db.update(invoice).set({ amountPaidCents: amount }).where(eq(invoice.id, row.id))
+  }
+}
+await db
+  .update(invoiceSettings)
+  .set({ nextInvoiceNumber: invNo + 1, nextQuoteNumber: quoteNo + 1 })
+  .where(eq(invoiceSettings.orgId, org.id))
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers and ${taskCount} tasks.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks and ${docs.length} invoices and quotes.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)

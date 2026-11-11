@@ -44,6 +44,16 @@ export const notificationTypes = {
     description: "When someone else completes it.",
     defaults: { inApp: true, email: false },
   },
+  "invoice.paid": {
+    label: "An invoice is paid in full",
+    description: "Sent to owners and admins.",
+    defaults: { inApp: true, email: false },
+  },
+  "quote.accepted": {
+    label: "A quote is accepted",
+    description: "Sent to owners, admins and whoever created it.",
+    defaults: { inApp: true, email: false },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",

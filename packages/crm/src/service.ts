@@ -370,10 +370,25 @@ export async function updateCustomer(ctx: CrmContext, id: string, input: Custome
 /** Deletes the customer with its contacts, deals and timeline. Callers check `customer: ["delete"]`. */
 export async function deleteCustomer(ctx: CrmContext, id: string) {
   const c = await ownCustomer(ctx, id)
-  await db.delete(customer).where(and(eq(customer.id, id), eq(customer.orgId, ctx.orgId)))
+  try {
+    await db.delete(customer).where(and(eq(customer.id, id), eq(customer.orgId, ctx.orgId)))
+  } catch (e) {
+    // Another module's records (e.g. invoices) still point at this customer.
+    if (isForeignKeyViolation(e))
+      throw new CrmError(
+        `${c.name} has invoices or other records, so they can't be deleted. Mark them inactive instead.`,
+        409,
+      )
+    throw e
+  }
   await audit(ctx, "customer.deleted", `Deleted customer ${c.name}`, {
     target: { type: "customer", id },
   })
+}
+
+function isForeignKeyViolation(e: unknown): boolean {
+  const err = e as { code?: string; cause?: unknown } | null
+  return err?.code === "23503" || (!!err?.cause && isForeignKeyViolation(err.cause))
 }
 
 // ---------- Contacts ----------

@@ -83,6 +83,8 @@ export default async function CustomerPage({ params }: PageProps<"/customers/[id
     canFiles,
     canUpload,
     canDeleteFiles,
+    canInvoices,
+    canInvoiceWrite,
   ] = await Promise.all([
     can({ customer: ["write"] }),
     can({ customer: ["delete"] }),
@@ -92,6 +94,8 @@ export default async function CustomerPage({ params }: PageProps<"/customers/[id
     can({ file: ["read"] }),
     can({ file: ["upload"] }),
     can({ file: ["delete"] }),
+    can({ invoice: ["read"] }),
+    can({ invoice: ["write"] }),
   ])
   const attachTo = { type: "customer", id: c.id }
   const [members, files] = await Promise.all([
@@ -356,6 +360,31 @@ export default async function CustomerPage({ params }: PageProps<"/customers/[id
                   ))}
                 </ul>
               )}
+            </Section>
+          )}
+
+          {canInvoices && (
+            <Section
+              title="Invoices"
+              action={
+                canInvoiceWrite && (
+                  <Link
+                    href={`/invoices/new?customer=${c.id}`}
+                    className="inline-flex h-8 items-center gap-1.5 rounded-md border px-2.5 text-sm font-medium hover:bg-accent [&_svg]:size-4"
+                  >
+                    <Plus /> Invoice
+                  </Link>
+                )
+              }
+            >
+              <div className="flex flex-wrap gap-x-4 gap-y-1 text-sm">
+                <Link href={`/invoices?customer=${c.id}`} className="underline">
+                  Invoices
+                </Link>
+                <Link href={`/invoices?kind=quote&customer=${c.id}`} className="underline">
+                  Quotes
+                </Link>
+              </div>
             </Section>
           )}
 

@@ -27,7 +27,8 @@
     "@templates/files": "workspace:*",
     "@templates/forms": "workspace:*",
     "@templates/crm": "workspace:*",
-    "@templates/tasks": "workspace:*"
+    "@templates/tasks": "workspace:*",
+    "@templates/invoicing": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",

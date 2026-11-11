@@ -38,6 +38,9 @@ importers:
       '@templates/forms':
         specifier: workspace:*
         version: link:../../packages/forms
+      '@templates/invoicing':
+        specifier: workspace:*
+        version: link:../../packages/invoicing
       '@templates/notifications':
         specifier: workspace:*
         version: link:../../packages/notifications
@@ -285,6 +288,40 @@ importers:
         specifier: ^5
         version: 5.9.3
 
+  packages/invoicing:
+    dependencies:
+      '@templates/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@templates/crm':
+        specifier: workspace:*
+        version: link:../crm
+      '@templates/db':
+        specifier: workspace:*
+        version: link:../db
+      '@templates/notifications':
+        specifier: workspace:*
+        version: link:../notifications
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(kysely@0.29.8)(postgres@4.1.0)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@templates/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^24
+        version: 24.19.2
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
   packages/notifications:
     dependencies:
       '@templates/db':
@@ -481,6 +518,9 @@ importers:
       '@templates/forms':
         specifier: workspace:*
         version: link:../packages/forms
+      '@templates/invoicing':
+        specifier: workspace:*
+        version: link:../packages/invoicing
       '@templates/notifications':
         specifier: workspace:*
         version: link:../packages/notifications
