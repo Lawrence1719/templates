@@ -26,6 +26,9 @@ importers:
       '@templates/auth':
         specifier: workspace:*
         version: link:../../packages/auth
+      '@templates/bookings':
+        specifier: workspace:*
+        version: link:../../packages/bookings
       '@templates/crm':
         specifier: workspace:*
         version: link:../../packages/crm
@@ -157,6 +160,40 @@ importers:
       next:
         specifier: 16.4.6
         version: 16.4.6(@types/node@24.19.2)(react-dom@19.3.0(react@19.3.0))(react@19.3.0)
+      server-only:
+        specifier: ^0.0.1
+        version: 0.0.1
+      zod:
+        specifier: 4.6.7
+        version: 4.6.7
+    devDependencies:
+      '@templates/config':
+        specifier: workspace:*
+        version: link:../config
+      '@types/node':
+        specifier: ^24
+        version: 24.19.2
+      typescript:
+        specifier: ^5
+        version: 5.9.3
+
+  packages/bookings:
+    dependencies:
+      '@templates/audit':
+        specifier: workspace:*
+        version: link:../audit
+      '@templates/crm':
+        specifier: workspace:*
+        version: link:../crm
+      '@templates/db':
+        specifier: workspace:*
+        version: link:../db
+      '@templates/notifications':
+        specifier: workspace:*
+        version: link:../notifications
+      drizzle-orm:
+        specifier: 0.45.4
+        version: 0.45.4(kysely@0.29.8)(postgres@4.1.0)
       server-only:
         specifier: ^0.0.1
         version: 0.0.1
@@ -583,6 +620,9 @@ importers:
       '@templates/auth':
         specifier: workspace:*
         version: link:../packages/auth
+      '@templates/bookings':
+        specifier: workspace:*
+        version: link:../packages/bookings
       '@templates/config':
         specifier: workspace:*
         version: link:../packages/config

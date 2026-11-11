@@ -13,6 +13,11 @@ if (existsSync("../../.env")) process.loadEnvFile("../../.env")
 const { db } = await import("@templates/db")
 const {
   auditLog,
+  booking,
+  bookingHours,
+  bookingResource,
+  bookingService,
+  bookingSettings,
   crmActivity,
   customer,
   customerContact,
@@ -39,6 +44,11 @@ const {
 } = await import("@templates/db/schema")
 const { and, eq } = await import("drizzle-orm")
 const { computeTotals } = await import("@templates/invoicing/definitions")
+const {
+  zonedToUtc,
+  addDays: addDay,
+  today: todayIn,
+} = await import("@templates/bookings/definitions")
 
 const ownerEmail = process.argv.slice(2).find((a) => a.includes("@"))
 if (!ownerEmail) throw new Error("Usage: seed:demo -- <owner-email>")
@@ -746,8 +756,105 @@ for (const [i, o] of orderSeed.entries()) {
 }
 await db.insert(orderSettings).values({ orgId: org.id, nextNumber: orderNo + 1 })
 
+// ---------- Bookings ----------
+const TZ = "Asia/Manila"
+await db.insert(bookingSettings).values({
+  orgId: org.id,
+  timeZone: TZ,
+  slotMinutes: 30,
+  minNoticeMinutes: 60,
+  publicEnabled: true,
+  publicSlug: crypto.randomUUID().replace(/-/g, "").slice(0, 12),
+})
+const [ana, room] = await db
+  .insert(bookingResource)
+  .values([
+    { orgId: org.id, name: owner.name, userId: owner.id },
+    { orgId: org.id, name: "Training room" },
+  ])
+  .returning()
+const [tasting, training] = await db
+  .insert(bookingService)
+  .values([
+    {
+      orgId: org.id,
+      name: "Coffee tasting",
+      description: "Try three single origins with our roaster.",
+      durationMinutes: 45,
+      bufferMinutes: 15,
+      priceCents: 1500,
+      currency: "USD",
+    },
+    {
+      orgId: org.id,
+      name: "Barista training",
+      description: "Two hours on espresso and milk.",
+      durationMinutes: 120,
+      bufferMinutes: 30,
+      priceCents: 9000,
+      currency: "USD",
+      resourceIds: room ? [room.id] : [],
+    },
+  ])
+  .returning()
+let bookingCount = 0
+if (ana && room && tasting && training) {
+  for (const r of [ana, room])
+    await db.insert(bookingHours).values(
+      [1, 2, 3, 4, 5, 6].map((weekday) => ({
+        orgId: org.id,
+        resourceId: r.id,
+        weekday,
+        startMinute: weekday === 6 ? 600 : 540,
+        endMinute: weekday === 6 ? 840 : 1080,
+      })),
+    )
+  const t0 = todayIn(TZ)
+  const plan: [
+    number,
+    string,
+    typeof ana,
+    typeof tasting,
+    string,
+    "confirmed" | "pending" | "completed" | "no_show" | "cancelled",
+    "staff" | "online",
+  ][] = [
+    [-3, "10:00", ana, tasting, "Paolo Cruz", "completed", "online"],
+    [-2, "14:00", room, training, "Bluebay Cafe team", "completed", "staff"],
+    [-1, "11:00", ana, tasting, "Mae Santos", "no_show", "online"],
+    [0, "15:00", ana, tasting, "Jonah Lim", "confirmed", "online"],
+    [1, "09:00", room, training, "Kestrel Labs", "confirmed", "staff"],
+    [1, "13:00", ana, tasting, "Iris Tan", "pending", "online"],
+    [2, "10:30", ana, tasting, "Rafa Reyes", "confirmed", "online"],
+    [3, "16:00", ana, tasting, "Bea Ramos", "cancelled", "online"],
+    [4, "14:00", room, training, "Orchid Hotels", "confirmed", "staff"],
+  ]
+  for (const [d, hhmm, res, svc, name, status, source] of plan) {
+    const [h, m] = hhmm.split(":").map(Number) as [number, number]
+    const start = zonedToUtc(addDay(t0, d), h * 60 + m, TZ)
+    if (!start) continue
+    const end = new Date(start.getTime() + svc.durationMinutes * 60_000)
+    await db.insert(booking).values({
+      orgId: org.id,
+      serviceId: svc.id,
+      resourceId: res.id,
+      customerName: name,
+      customerEmail: `${name.toLowerCase().replace(/\W+/g, ".")}@demo.test`,
+      startsAt: start,
+      endsAt: end,
+      blockedUntil: new Date(end.getTime() + svc.bufferMinutes * 60_000),
+      status,
+      source,
+      cancelReason: status === "cancelled" ? "Something came up" : null,
+      manageToken: crypto.randomUUID().replace(/-/g, "").slice(0, 24),
+      createdBy: source === "staff" ? owner.id : null,
+    })
+    bookingCount++
+  }
+}
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products and ${orderSeed.length} orders.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products, ${orderSeed.length} orders and ${bookingCount} bookings.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)

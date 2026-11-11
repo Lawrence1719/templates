@@ -1,0 +1,27 @@
+{
+  "name": "@templates/bookings",
+  "version": "0.0.0",
+  "private": true,
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./definitions": "./src/definitions.ts"
+  },
+  "scripts": {
+    "typecheck": "tsc"
+  },
+  "dependencies": {
+    "@templates/audit": "workspace:*",
+    "@templates/db": "workspace:*",
+    "@templates/notifications": "workspace:*",
+    "drizzle-orm": "0.45.4",
+    "server-only": "^0.0.1",
+    "zod": "4.6.7",
+    "@templates/crm": "workspace:*"
+  },
+  "devDependencies": {
+    "@templates/config": "workspace:*",
+    "@types/node": "^24",
+    "typescript": "^5"
+  }
+}

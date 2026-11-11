@@ -20,6 +20,7 @@ export const statements = {
   payment: ["record", "delete"],
   inventory: ["read", "move", "adjust", "manage"],
   order: ["read", "write", "confirm", "fulfill", "cancel"],
+  booking: ["read", "write", "manage"],
 } as const
 
 export const ac = createAccessControl(statements)
@@ -49,6 +50,7 @@ export const admin = ac.newRole({
   payment: ["record", "delete"],
   inventory: ["read", "move", "adjust", "manage"],
   order: ["read", "write", "confirm", "fulfill", "cancel"],
+  booking: ["read", "write", "manage"],
 })
 
 /** Regular staff: uses the app, cannot manage the org. */
@@ -70,6 +72,8 @@ export const member = ac.newRole({
   inventory: ["read", "move"],
   // Members take, confirm and fulfill orders; cancelling is for admins.
   order: ["read", "write", "confirm", "fulfill"],
+  // Members book, confirm and cancel; services, hours and booking settings are for admins.
+  booking: ["read", "write"],
 })
 
 export const roles = { owner, admin, member }

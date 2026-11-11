@@ -69,6 +69,16 @@ export const notificationTypes = {
     description: "When someone else cancels it.",
     defaults: { inApp: true, email: true },
   },
+  "booking.created": {
+    label: "Someone books online",
+    description: "Sent to the staff member booked, or to owners and admins.",
+    defaults: { inApp: true, email: true },
+  },
+  "booking.cancelled": {
+    label: "A customer cancels a booking",
+    description: "Sent to the staff member booked, or to owners and admins.",
+    defaults: { inApp: true, email: true },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",

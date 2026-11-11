@@ -30,6 +30,7 @@ packages/tasks    Tasks, projects board, checklists, repeating work
 packages/invoicing  Quotes, invoices, payments, customer links
 packages/inventory  Products, locations, stock ledger, reorder alerts
 packages/orders   Sales orders: confirm, fulfill from stock, invoice
+packages/bookings  Services, hours, slots, public booking page
 ```
 
 ## Quickstart
@@ -51,7 +52,7 @@ docker compose up -d
 pnpm test
 ```
 
-247 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), dashboard metrics (day bucketing, period comparison, org scoping), notifications (right recipients, preferences, inbox isolation, email escaping), files (type detection, name sanitizing, org isolation, delete rights), forms (validation, spam protection, members-only access, org isolation), the CRM (search, pipeline moves, money parsing, owner checks, database-level tenant links), tasks (repeat rules, due buckets, delete rights, comment notifications), invoicing (exact money math, gap-free numbering under concurrency, no overpayment, database-locked sent invoices), inventory (no overselling under concurrency, deadlock-free transfers, append-only stock ledger), and orders (all-or-nothing fulfillment from stock, locked finished orders, append-only history). CI runs lint, typecheck, tests and build on every push.
+266 integration tests run against a throwaway Postgres database and the real auth handler — no mocked database. They cover sign-in and rate limiting, cross-site request protection, tenant isolation, every role's permissions, the audit log (correct actor, tamper resistance, org scoping, CSV safety), dashboard metrics (day bucketing, period comparison, org scoping), notifications (right recipients, preferences, inbox isolation, email escaping), files (type detection, name sanitizing, org isolation, delete rights), forms (validation, spam protection, members-only access, org isolation), the CRM (search, pipeline moves, money parsing, owner checks, database-level tenant links), tasks (repeat rules, due buckets, delete rights, comment notifications), invoicing (exact money math, gap-free numbering under concurrency, no overpayment, database-locked sent invoices), inventory (no overselling under concurrency, deadlock-free transfers, append-only stock ledger), orders (all-or-nothing fulfillment from stock, locked finished orders, append-only history), and bookings (no double booking under concurrency, daylight-saving-safe slots, bot and rate limits). CI runs lint, typecheck, tests and build on every push.
 
 ## Modules
 
@@ -71,17 +72,17 @@ All seven core modules are done; business modules are shipping now. Everything i
 
 ### Business
 
-| Module                                     | What it gives you                                                      | Status    |
-| ------------------------------------------ | ---------------------------------------------------------------------- | --------- |
-| [CRM](packages/crm)                        | Customers, contacts, deals pipeline, activity timeline, CSV export     | ✅ v0.1   |
-| [Tasks & projects](packages/tasks)         | Assignments, checklists, due dates, repeating work, project boards     | ✅ v0.1   |
-| [Invoicing & payments](packages/invoicing) | Quotes, invoices, payments, customer links, reminders                  | ✅ v0.1   |
-| [Inventory](packages/inventory)            | Products, locations, stock ledger, transfers, counts, low-stock alerts | ✅ v0.1   |
-| [Orders & sales](packages/orders)          | Order workflow: confirm, fulfill from stock, invoice, full history     | ✅ v0.1   |
-| Scheduling & bookings                      | Calendars, time slots, confirmations                                   | 🔜 next   |
-| Point of sale                              | Cart, receipts, cash drawer, shift reports                             | 🗓 planned |
-| Staff & HR                                 | Employee records, attendance, leave                                    | 🗓 planned |
-| Memberships                                | Plans, renewals, member check-in                                       | 🗓 planned |
+| Module                                     | What it gives you                                                        | Status    |
+| ------------------------------------------ | ------------------------------------------------------------------------ | --------- |
+| [CRM](packages/crm)                        | Customers, contacts, deals pipeline, activity timeline, CSV export       | ✅ v0.1   |
+| [Tasks & projects](packages/tasks)         | Assignments, checklists, due dates, repeating work, project boards       | ✅ v0.1   |
+| [Invoicing & payments](packages/invoicing) | Quotes, invoices, payments, customer links, reminders                    | ✅ v0.1   |
+| [Inventory](packages/inventory)            | Products, locations, stock ledger, transfers, counts, low-stock alerts   | ✅ v0.1   |
+| [Orders & sales](packages/orders)          | Order workflow: confirm, fulfill from stock, invoice, full history       | ✅ v0.1   |
+| [Scheduling & bookings](packages/bookings) | Services, hours, time off, slots, public booking page, no double booking | ✅ v0.1   |
+| Point of sale                              | Cart, receipts, cash drawer, shift reports                               | 🔜 next   |
+| Staff & HR                                 | Employee records, attendance, leave                                      | 🗓 planned |
+| Memberships                                | Plans, renewals, member check-in                                         | 🗓 planned |
 
 ## License
 

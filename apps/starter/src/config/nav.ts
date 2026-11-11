@@ -3,6 +3,7 @@ import {
   Bell,
   Boxes,
   Building2,
+  CalendarDays,
   CheckSquare,
   ClipboardList,
   FolderKanban,
@@ -63,6 +64,13 @@ export const nav: NavGroup[] = [
   {
     label: "Operations",
     items: [
+      {
+        title: "Bookings",
+        href: "/bookings",
+        icon: CalendarDays,
+        permission: { booking: ["read"] },
+        keywords: ["appointments", "calendar", "schedule", "reservations", "slots"],
+      },
       {
         title: "Inventory",
         href: "/inventory",

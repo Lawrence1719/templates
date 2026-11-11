@@ -16,6 +16,7 @@
 - **Invoices** are locked by a database trigger once sent (lines, totals, customer, number and dates can't change; no deletes), numbered from a row-locked counter, and paid under a row lock with a `paid ≤ total` check. Money is integer cents with exact rounding. Customer links are 144-bit, `noindex` and `no-referrer`.
 - **Inventory** keeps an append-only stock ledger (trigger blocks edits and deletes), locks stock rows for every movement, keeps quantities ≥ 0 with a database check, and writes both sides of a transfer in one transaction.
 - **Orders** are locked by a trigger once fulfilled or cancelled (no edits, reopening or deletes), keep an append-only history, and fulfill all product lines from stock in one transaction under row locks.
+- **Bookings** can't overlap: a Postgres exclusion constraint refuses two active bookings for the same person or room. Online bookings are re-checked against live availability, guarded by a honeypot and a per-IP limit, and the public page never shows other bookings.
 - **Secrets** are validated at startup and never committed (`.env` is ignored; see `.env.example`).
 
 ## Verified
@@ -45,6 +46,7 @@ These, and more, run automatically in [`tests/`](tests) on every push (see CI):
 | Invoicing     | sent invoices can't be edited or deleted even with direct SQL; six concurrent sends get six distinct numbers; five concurrent payments can't overpay; rounding exact; customers with invoices can't be deleted; other orgs get 404 and can't bill your customers; draft and bad links 404 |
 | Inventory     | ledger can't be edited or deleted even with direct SQL; 8 concurrent issues against 5 in stock let exactly 5 through; opposite transfers don't deadlock; failed transfers change nothing; stock never negative; other orgs get 404 and can't mix locations                                |
 | Orders        | finished orders can't be edited, reopened or deleted even with direct SQL; history can't be rewritten; short stock changes nothing and names the lines; two orders racing for stock ship once; numbers unique under concurrency; other orgs get 404                                       |
+| Bookings      | 8 simultaneous requests for one slot: exactly one wins; buffers respected; times not offered are refused; DST gaps never offered; bots get a fake success; 11th booking per IP per hour is 429; old public links stop working; other orgs get 404 and can't use your people or services   |
 | Dashboard     | metrics count only the active org's rows                                                                                                                                                                                                                                                  |
 
 **Note:** Better Auth disables its origin check when `NODE_ENV=test`. This project sets `disableOriginCheck: false` explicitly so the protection is always on — and tested.
