@@ -33,7 +33,8 @@
     "@templates/orders": "workspace:*",
     "@templates/bookings": "workspace:*",
     "@templates/pos": "workspace:*",
-    "@templates/hr": "workspace:*"
+    "@templates/hr": "workspace:*",
+    "@templates/memberships": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",

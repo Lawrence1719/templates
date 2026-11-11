@@ -33,6 +33,12 @@ const {
   leaveType,
   location,
   member,
+  membership,
+  membershipCheckIn,
+  membershipEvent,
+  membershipPeriod,
+  membershipPlan,
+  membershipSettings,
   orderSettings,
   organization,
   payment,
@@ -65,6 +71,7 @@ const {
   today: todayIn,
 } = await import("@templates/bookings/definitions")
 const { computeCart } = await import("@templates/pos/definitions")
+const { periodEndFor } = await import("@templates/memberships/definitions")
 
 const ownerEmail = process.argv.slice(2).find((a) => a.includes("@"))
 if (!ownerEmail) throw new Error("Usage: seed:demo -- <owner-email>")
@@ -1263,8 +1270,163 @@ for (const [i, id] of staffIds.slice(1, 8).entries()) {
   }
 }
 
+// ---------- Memberships ----------
+await db
+  .insert(membershipSettings)
+  .values({ orgId: org.id, timeZone: TZ, checkInCooldownMinutes: 60, reminderDays: 7 })
+const [monthlyPlan, annualPlan, packPlan] = await db
+  .insert(membershipPlan)
+  .values([
+    {
+      orgId: org.id,
+      name: "Coffee Club monthly",
+      description: "One free drink a day.",
+      priceCents: 2900,
+      currency: "USD",
+      periodUnit: "month" as const,
+      periodCount: 1,
+    },
+    {
+      orgId: org.id,
+      name: "Coffee Club annual",
+      description: "One free drink a day, two months free.",
+      priceCents: 29000,
+      currency: "USD",
+      periodUnit: "year" as const,
+      periodCount: 1,
+    },
+    {
+      orgId: org.id,
+      name: "Brew class pack",
+      description: "Ten barista classes within three months.",
+      priceCents: 12000,
+      currency: "USD",
+      periodUnit: "month" as const,
+      periodCount: 3,
+      visitLimit: 10,
+    },
+  ])
+  .returning()
+const card = () => {
+  const a = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ"
+  return Array.from({ length: 24 }, () => a[Math.floor(Math.random() * a.length)]).join("")
+}
+let memberCount = 0
+let visitCount = 0
+if (monthlyPlan && annualPlan && packPlan) {
+  const t = todayIn(TZ)
+  const plan: [string, typeof monthlyPlan, number, "active" | "paused" | "cancelled", boolean][] = [
+    // name, plan, started days ago, status, auto-renew
+    ["Paolo Cruz", monthlyPlan, 12, "active", true],
+    ["Mae Santos", monthlyPlan, 26, "active", false], // ends within a week
+    ["Jonah Lim", annualPlan, 140, "active", true],
+    ["Iris Tan", packPlan, 20, "active", false],
+    ["Rafa Reyes", monthlyPlan, 40, "active", false], // lapsed
+    ["Bea Ramos", monthlyPlan, 8, "paused", false],
+    ["Leo Garcia", annualPlan, 300, "cancelled", false],
+    ["Nina Bautista", packPlan, 5, "active", true],
+  ]
+  for (const [name, p, ago, status, autoRenew] of plan) {
+    const [c] = await db
+      .insert(customer)
+      .values({
+        orgId: org.id,
+        kind: "person",
+        name,
+        email: `${name.toLowerCase().replace(/\W+/g, ".")}@demo.test`,
+        status: "active",
+        ownerId: owner.id,
+      })
+      .returning()
+    if (!c) continue
+    const startedOn = addDay(t, -ago)
+    const periodEnd = periodEndFor(startedOn, p)
+    const [m] = await db
+      .insert(membership)
+      .values({
+        orgId: org.id,
+        customerId: c.id,
+        planId: p.id,
+        startedOn,
+        periodStart: startedOn,
+        periodEnd,
+        autoRenew,
+        cardToken: card(),
+        status: status === "cancelled" ? "active" : status,
+        pausedOn: status === "paused" ? addDay(t, -2) : null,
+        createdBy: owner.id,
+      })
+      .returning()
+    if (!m) continue
+    memberCount++
+    await db.insert(membershipPeriod).values({
+      orgId: org.id,
+      membershipId: m.id,
+      startDay: startedOn,
+      endDay: periodEnd,
+      priceCents: p.priceCents,
+      currency: p.currency,
+      paidVia: ago % 2 ? "card" : "cash",
+      createdBy: owner.id,
+    })
+    await db.insert(membershipEvent).values({
+      orgId: org.id,
+      membershipId: m.id,
+      kind: "started",
+      body: `${owner.name} started ${p.name}`,
+      createdBy: owner.id,
+      createdAt: daysAgo(ago, 0),
+    })
+    // Visits on most weekdays they were active, up to today.
+    const last = periodEnd < t ? periodEnd : addDay(t, -1)
+    let n = 0
+    for (
+      let d = startedOn;
+      d <= last && (!p.visitLimit || n < p.visitLimit - 3);
+      d = addDay(d, 1)
+    ) {
+      const wd = new Date(`${d}T00:00:00Z`).getUTCDay()
+      if (wd === 0 || Math.random() < (p.visitLimit ? 0.75 : 0.35)) continue
+      if (status === "paused" && d >= addDay(t, -2)) break
+      const at = zonedToUtc(d, 7 * 60 + Math.floor(Math.random() * 600), TZ)
+      if (!at) continue
+      await db.insert(membershipCheckIn).values({
+        orgId: org.id,
+        membershipId: m.id,
+        periodStart: startedOn,
+        checkedInAt: at,
+        method: Math.random() < 0.8 ? "card" : "desk",
+        checkedInBy: people[1]?.id ?? owner.id,
+      })
+      n++
+      visitCount++
+    }
+    if (status === "paused")
+      await db.insert(membershipEvent).values({
+        orgId: org.id,
+        membershipId: m.id,
+        kind: "paused",
+        body: `${owner.name} paused the membership`,
+        createdBy: owner.id,
+      })
+    if (status === "cancelled") {
+      await db
+        .update(membership)
+        .set({ status: "cancelled", cancelledAt: daysAgo(30), cancelReason: "Moved to Cebu" })
+        .where(eq(membership.id, m.id))
+      await db.insert(membershipEvent).values({
+        orgId: org.id,
+        membershipId: m.id,
+        kind: "cancelled",
+        body: `${owner.name} cancelled it: Moved to Cebu`,
+        createdBy: owner.id,
+      })
+    }
+  }
+}
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products, ${orderSeed.length} orders, ${bookingCount} bookings, ${posSales} till sales over ${posShifts} shifts, ${staffIds.length} employees with ${entries} time entries and ${leaves} leave requests.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products, ${orderSeed.length} orders, ${bookingCount} bookings, ${posSales} till sales over ${posShifts} shifts, ${staffIds.length} employees with ${entries} time entries, ${leaves} leave requests, and ${memberCount} memberships with ${visitCount} visits.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)

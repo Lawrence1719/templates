@@ -10,6 +10,7 @@ import {
   FolderKanban,
   FolderOpen,
   Handshake,
+  IdCard,
   LayoutDashboard,
   ReceiptText,
   ScrollText,
@@ -80,6 +81,13 @@ export const nav: NavGroup[] = [
         icon: CalendarDays,
         permission: { booking: ["read"] },
         keywords: ["appointments", "calendar", "schedule", "reservations", "slots"],
+      },
+      {
+        title: "Memberships",
+        href: "/memberships",
+        icon: IdCard,
+        permission: { membership: ["read"] },
+        keywords: ["members", "plans", "subscriptions", "check-in", "gym", "renewals", "passes"],
       },
       {
         title: "Staff",
