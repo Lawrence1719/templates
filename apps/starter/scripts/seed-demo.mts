@@ -22,10 +22,14 @@ const {
   invoiceSettings,
   location,
   member,
+  orderSettings,
   organization,
   payment,
   product,
   project,
+  salesOrder,
+  salesOrderEvent,
+  salesOrderLine,
   stockLevel,
   stockMovement,
   task,
@@ -33,7 +37,7 @@ const {
   taskComment,
   user,
 } = await import("@templates/db/schema")
-const { eq } = await import("drizzle-orm")
+const { and, eq } = await import("drizzle-orm")
 const { computeTotals } = await import("@templates/invoicing/definitions")
 
 const ownerEmail = process.argv.slice(2).find((a) => a.includes("@"))
@@ -518,6 +522,7 @@ const stockSeed = [
 ] as const
 let productCount = 0
 const balances = new Map<string, number>()
+const productBySku = new Map<string, { id: string; name: string; priceCents: number }>()
 for (const [i, [sku, name, category, unit, cost, price, rp, rq, qtys]] of stockSeed.entries()) {
   const [p] = await db
     .insert(product)
@@ -536,6 +541,7 @@ for (const [i, [sku, name, category, unit, cost, price, rp, rq, qtys]] of stockS
     .returning()
   if (!p || !warehouse || !storeA || !storeB) continue
   productCount++
+  productBySku.set(sku, p)
   const move = async (
     loc: string,
     kind: "receive" | "issue" | "transfer_out" | "transfer_in" | "count",
@@ -582,8 +588,166 @@ for (const [i, [sku, name, category, unit, cost, price, rp, rq, qtys]] of stockS
   }
 }
 
+// ---------- Orders ----------
+const orderSeed: {
+  status: "draft" | "confirmed" | "fulfilled" | "cancelled"
+  daysBack: number
+  wanted: number
+  items: [string, number][]
+}[] = [
+  {
+    status: "fulfilled",
+    daysBack: 20,
+    wanted: -15,
+    items: [
+      ["CUP-12OZ", 500],
+      ["LID-12OZ", 500],
+    ],
+  },
+  {
+    status: "fulfilled",
+    daysBack: 12,
+    wanted: -8,
+    items: [
+      ["CUP-12OZ", 300],
+      ["LID-12OZ", 300],
+    ],
+  },
+  {
+    status: "confirmed",
+    daysBack: 4,
+    wanted: -1,
+    items: [
+      ["BEAN-HOUSE-1KG", 10],
+      ["MILK-WHOLE-1L", 12],
+    ],
+  },
+  {
+    status: "confirmed",
+    daysBack: 2,
+    wanted: 3,
+    items: [
+      ["BEAN-SO-ETH", 4],
+      ["SYR-VAN-750", 2],
+    ],
+  },
+  { status: "draft", daysBack: 0, wanted: 7, items: [["TEE-LOGO-M", 6]] },
+  { status: "cancelled", daysBack: 9, wanted: -4, items: [["MILK-OAT-1L", 24]] },
+]
+let orderNo = 0
+for (const [i, o] of orderSeed.entries()) {
+  const items = o.items.map(([sku, qty]) => ({ p: productBySku.get(sku)!, qtyMilli: qty * 1000 }))
+  const lines = computeTotals(
+    items.map(({ p, qtyMilli }) => ({
+      productId: p.id,
+      description: p.name,
+      quantityMilli: qtyMilli,
+      unitPriceCents: p.priceCents || 150,
+      taxRateBp: 1200,
+    })),
+  )
+  const number = `SO-${String(++orderNo).padStart(4, "0")}`
+  const by = people[(i % 3) + 1] ?? people[0]!
+  const [row] = await db
+    .insert(salesOrder)
+    .values({
+      orgId: org.id,
+      number,
+      customerId: customerIds[(i + 2) % customerIds.length]!,
+      orderDate: day(-o.daysBack),
+      requestedOn: day(o.wanted),
+      locationId: warehouse?.id,
+      currency: "USD",
+      subtotalCents: lines.subtotalCents,
+      taxCents: lines.taxCents,
+      totalCents: lines.totalCents,
+      createdBy: by.id,
+      createdAt: daysAgo(o.daysBack),
+    })
+    .returning()
+  if (!row || !warehouse) continue
+  await db
+    .insert(salesOrderLine)
+    .values(lines.lines.map((l, position) => ({ ...l, position, orgId: org.id, orderId: row.id })))
+  const ev = (
+    kind: "created" | "confirmed" | "fulfilled" | "cancelled",
+    body: string,
+    back: number,
+  ) =>
+    db.insert(salesOrderEvent).values({
+      orgId: org.id,
+      orderId: row.id,
+      kind,
+      body,
+      createdBy: by.id,
+      createdAt: daysAgo(back),
+    })
+  await ev("created", `${by.name} created the order`, o.daysBack)
+  if (o.status === "draft") continue
+  if (o.status === "cancelled") {
+    await ev(
+      "cancelled",
+      `${by.name} cancelled the order: Customer found another supplier`,
+      o.daysBack - 1,
+    )
+    await db
+      .update(salesOrder)
+      .set({
+        status: "cancelled",
+        cancelledAt: daysAgo(o.daysBack - 1),
+        cancelReason: "Customer found another supplier",
+      })
+      .where(eq(salesOrder.id, row.id))
+    continue
+  }
+  await ev("confirmed", `${by.name} confirmed the order`, o.daysBack - 0.5)
+  if (o.status === "confirmed") {
+    await db
+      .update(salesOrder)
+      .set({ status: "confirmed", confirmedAt: daysAgo(o.daysBack - 0.5) })
+      .where(eq(salesOrder.id, row.id))
+    continue
+  }
+  // Fulfilled: take the stock out of the warehouse, keeping the ledger and levels in step.
+  for (const { p, qtyMilli } of items) {
+    const key = `${p.id}:${warehouse.id}`
+    const after = (balances.get(key) ?? 0) - qtyMilli
+    balances.set(key, after)
+    await db.insert(stockMovement).values({
+      orgId: org.id,
+      productId: p.id,
+      locationId: warehouse.id,
+      kind: "issue",
+      quantityMilli: -qtyMilli,
+      balanceAfterMilli: after,
+      reason: "sold",
+      reference: number,
+      createdBy: by.id,
+      createdAt: daysAgo(o.daysBack - 2),
+    })
+    await db
+      .update(stockLevel)
+      .set({ quantityMilli: after })
+      .where(and(eq(stockLevel.productId, p.id), eq(stockLevel.locationId, warehouse.id)))
+  }
+  await ev(
+    "fulfilled",
+    `${by.name} fulfilled the order: ${items.length} product lines shipped from ${warehouse.name}`,
+    o.daysBack - 2,
+  )
+  await db
+    .update(salesOrder)
+    .set({
+      status: "fulfilled",
+      confirmedAt: daysAgo(o.daysBack - 0.5),
+      fulfilledAt: daysAgo(o.daysBack - 2),
+    })
+    .where(eq(salesOrder.id, row.id))
+}
+await db.insert(orderSettings).values({ orgId: org.id, nextNumber: orderNo + 1 })
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, and ${productCount} products.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products and ${orderSeed.length} orders.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)

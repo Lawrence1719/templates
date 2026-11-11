@@ -59,6 +59,16 @@ export const notificationTypes = {
     description: "When stock falls to its reorder point. Sent to owners and admins.",
     defaults: { inApp: true, email: true },
   },
+  "order.confirmed": {
+    label: "An order is confirmed",
+    description: "Sent to owners and admins, so it can be prepared.",
+    defaults: { inApp: true, email: false },
+  },
+  "order.cancelled": {
+    label: "An order you created is cancelled",
+    description: "When someone else cancels it.",
+    defaults: { inApp: true, email: true },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",

@@ -11,6 +11,7 @@ import {
   LayoutDashboard,
   ReceiptText,
   ScrollText,
+  ShoppingCart,
   UserRound,
   Users,
 } from "lucide-react"
@@ -42,6 +43,13 @@ export const nav: NavGroup[] = [
         icon: Handshake,
         permission: { deal: ["read"] },
         keywords: ["pipeline", "sales", "opportunities"],
+      },
+      {
+        title: "Orders",
+        href: "/orders",
+        icon: ShoppingCart,
+        permission: { order: ["read"] },
+        keywords: ["sales orders", "fulfillment", "shipping", "delivery"],
       },
       {
         title: "Invoices",

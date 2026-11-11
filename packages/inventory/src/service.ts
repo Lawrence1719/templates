@@ -6,7 +6,7 @@ import { audit } from "@templates/audit"
 import { db } from "@templates/db"
 import { location, product, stockLevel, stockMovement, user } from "@templates/db/schema"
 import { membersWithRole, notify } from "@templates/notifications"
-import { and, asc, count, desc, eq, gte, ilike, lt, or, type SQL, sql } from "drizzle-orm"
+import { and, asc, count, desc, eq, gte, ilike, inArray, lt, or, type SQL, sql } from "drizzle-orm"
 import { z } from "zod"
 
 import {
@@ -278,7 +278,14 @@ export async function deleteProduct(ctx: InventoryContext, id: string) {
     .where(eq(stockMovement.productId, p.id))
   if ((m?.n ?? 0) > 0)
     throw new InventoryError("This product has stock history. Archive it instead.", 409)
-  await db.delete(product).where(and(eq(product.id, id), eq(product.orgId, ctx.orgId)))
+  try {
+    await db.delete(product).where(and(eq(product.id, id), eq(product.orgId, ctx.orgId)))
+  } catch (e) {
+    // Another module (e.g. an order line) still refers to this product.
+    if (pgCode(e) === "23503")
+      throw new InventoryError("This product is used on orders. Archive it instead.", 409)
+    throw e
+  }
   await audit(ctx, "product.deleted", `Deleted product ${p.sku}`, {
     target: { type: "product", id },
   })
@@ -626,6 +633,111 @@ export async function countStock(ctx: InventoryContext, productId: string, input
     )
   await alertIfLow(ctx, p, before)
   return movement
+}
+
+/**
+ * Issues several products from one location in a single transaction: all or
+ * nothing. Pass `tx` to make it part of a bigger transaction (an order being
+ * fulfilled). Throws InventoryError with `product:<id>` field errors listing
+ * every short product. Call `sendLowStockAlerts` with the result after commit.
+ */
+export async function issueMany(
+  ctx: InventoryContext,
+  input: {
+    locationId: string
+    items: { productId: string; quantityMilli: number }[]
+    reason: IssueInput["reason"]
+    reference?: string | null
+    note?: string | null
+  },
+  tx?: Tx,
+) {
+  const run = async (t: Tx) => {
+    const loc = await ownLocationTx(t, ctx, input.locationId)
+    // Merge repeated products and lock in a fixed order so concurrent calls can't deadlock.
+    const want = new Map<string, number>()
+    for (const i of input.items) {
+      if (!Number.isInteger(i.quantityMilli) || i.quantityMilli <= 0)
+        throw invalid({ quantity: "Quantities must be more than zero" })
+      want.set(i.productId, (want.get(i.productId) ?? 0) + i.quantityMilli)
+    }
+    const ids = [...want.keys()].sort()
+    if (!ids.length) return { movements: [], low: [] as LowCandidate[] }
+    const products = await t
+      .select()
+      .from(product)
+      .where(and(eq(product.orgId, ctx.orgId), inArray(product.id, ids)))
+    if (products.length !== ids.length) throw notFound()
+    const byId = new Map(products.map((p) => [p.id, p]))
+    const before = new Map<string, number>()
+    for (const r of await t
+      .select({
+        id: stockLevel.productId,
+        qty: sql<number>`sum(${stockLevel.quantityMilli})::bigint`.mapWith(Number),
+      })
+      .from(stockLevel)
+      .where(inArray(stockLevel.productId, ids))
+      .groupBy(stockLevel.productId))
+      before.set(r.id, r.qty)
+
+    const current = new Map<string, number>()
+    for (const id of ids) current.set(id, await lockLevel(t, ctx.orgId, id, loc.id))
+    const short: Record<string, string> = {}
+    for (const id of ids) {
+      const have = current.get(id) ?? 0
+      const p = byId.get(id)
+      if (have < (want.get(id) ?? 0))
+        short[`product:${id}`] =
+          `Only ${formatQuantity(have, p?.unit)} of ${p?.name} at ${loc.name}`
+    }
+    if (Object.keys(short).length) throw invalid(short)
+
+    const movements = []
+    for (const id of ids) {
+      const p = byId.get(id)
+      movements.push(
+        await apply(
+          t,
+          ctx,
+          {
+            productId: id,
+            locationId: loc.id,
+            kind: "issue",
+            delta: -(want.get(id) ?? 0),
+            reason: input.reason,
+            reference: input.reference,
+            note: input.note,
+          },
+          current.get(id) ?? 0,
+          p?.unit ?? "",
+        ),
+      )
+    }
+    const low = products.map((p) => ({ product: p, before: before.get(p.id) ?? 0 }))
+    return { movements, low }
+  }
+  return tx ? run(tx) : db.transaction(run)
+}
+
+type LowCandidate = {
+  product: { id: string; sku: string; name: string; unit: string; reorderPointMilli: number }
+  before: number
+}
+
+/** Sends low-stock alerts for products that crossed their reorder point. Call after the transaction commits. */
+export async function sendLowStockAlerts(ctx: InventoryContext, low: LowCandidate[]) {
+  for (const l of low) await alertIfLow(ctx, l.product, l.before)
+}
+
+async function ownLocationTx(t: Tx, ctx: Pick<InventoryContext, "orgId">, id: string) {
+  const [row] = isUuid(id)
+    ? await t
+        .select()
+        .from(location)
+        .where(and(eq(location.id, id), eq(location.orgId, ctx.orgId)))
+    : []
+  if (!row) throw invalid({ locationId: "Choose a location from the list" })
+  return row
 }
 
 // ---------- Reports ----------

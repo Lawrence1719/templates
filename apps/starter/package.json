@@ -29,7 +29,8 @@
     "@templates/crm": "workspace:*",
     "@templates/tasks": "workspace:*",
     "@templates/invoicing": "workspace:*",
-    "@templates/inventory": "workspace:*"
+    "@templates/inventory": "workspace:*",
+    "@templates/orders": "workspace:*"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "4.3.5",
