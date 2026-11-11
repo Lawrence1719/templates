@@ -84,6 +84,21 @@ export const notificationTypes = {
     description: "When a counted drawer doesn't match. Sent to owners and admins.",
     defaults: { inApp: true, email: true },
   },
+  "leave.requested": {
+    label: "Someone asks for leave",
+    description: "Sent to their manager, or to owners and admins.",
+    defaults: { inApp: true, email: true },
+  },
+  "leave.decided": {
+    label: "Your leave is approved or declined",
+    description: "When someone decides your request.",
+    defaults: { inApp: true, email: true },
+  },
+  "leave.cancelled": {
+    label: "Approved leave is cancelled",
+    description: "Sent to approvers when someone cancels, or to the person when HR cancels.",
+    defaults: { inApp: true, email: true },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",

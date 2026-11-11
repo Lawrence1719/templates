@@ -127,6 +127,20 @@
       "when": 1794372777168,
       "tag": "0017_pos_locks",
       "breakpoints": true
+    },
+    {
+      "idx": 18,
+      "version": "7",
+      "when": 1794374483023,
+      "tag": "0018_hr",
+      "breakpoints": true
+    },
+    {
+      "idx": 19,
+      "version": "7",
+      "when": 1794374483446,
+      "tag": "0019_hr_rules",
+      "breakpoints": true
     }
   ]
 }

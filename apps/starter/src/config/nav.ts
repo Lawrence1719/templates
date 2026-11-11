@@ -6,6 +6,7 @@ import {
   CalendarDays,
   CheckSquare,
   ClipboardList,
+  Clock,
   FolderKanban,
   FolderOpen,
   Handshake,
@@ -16,6 +17,7 @@ import {
   Store,
   UserRound,
   Users,
+  UsersRound,
 } from "lucide-react"
 
 /**
@@ -78,6 +80,20 @@ export const nav: NavGroup[] = [
         icon: CalendarDays,
         permission: { booking: ["read"] },
         keywords: ["appointments", "calendar", "schedule", "reservations", "slots"],
+      },
+      {
+        title: "Staff",
+        href: "/hr",
+        icon: UsersRound,
+        permission: { hr: ["self"] },
+        keywords: ["hr", "employees", "people", "team", "directory", "leave", "timesheets"],
+      },
+      {
+        title: "My time & leave",
+        href: "/hr/me",
+        icon: Clock,
+        permission: { hr: ["self"] },
+        keywords: ["clock in", "clock out", "attendance", "vacation", "time off", "leave request"],
       },
       {
         title: "Inventory",

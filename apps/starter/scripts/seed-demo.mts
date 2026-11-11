@@ -22,9 +22,15 @@ const {
   customer,
   customerContact,
   deal,
+  employee,
+  hrDepartment,
+  hrHoliday,
+  hrSettings,
   invoice,
   invoiceLine,
   invoiceSettings,
+  leaveRequest,
+  leaveType,
   location,
   member,
   orderSettings,
@@ -48,6 +54,7 @@ const {
   task,
   taskChecklistItem,
   taskComment,
+  timeEntry,
   user,
 } = await import("@templates/db/schema")
 const { and, eq } = await import("drizzle-orm")
@@ -1121,8 +1128,143 @@ if (storeA && storeB) {
     .where(eq(posSettings.orgId, org.id))
 }
 
+// ---------- Staff & HR ----------
+await db
+  .insert(hrSettings)
+  .values({ orgId: org.id, timeZone: TZ, workDays: [1, 2, 3, 4, 5], weeklyHours: 40 })
+const depts = await db
+  .insert(hrDepartment)
+  .values(["Leadership", "Stores", "Warehouse", "Finance"].map((name) => ({ orgId: org.id, name })))
+  .returning()
+const [vacationType, sickType, unpaidType] = await db
+  .insert(leaveType)
+  .values([
+    { orgId: org.id, name: "Vacation", allowanceHalfDays: 30 },
+    { orgId: org.id, name: "Sick", allowanceHalfDays: 20 },
+    { orgId: org.id, name: "Unpaid", allowanceHalfDays: null, paid: false },
+  ])
+  .returning()
+await db.insert(hrHoliday).values(
+  [
+    ["2026-11-30", "Bonifacio Day"],
+    ["2026-12-08", "Feast of the Immaculate Conception"],
+    ["2026-12-25", "Christmas Day"],
+    ["2026-12-30", "Rizal Day"],
+    ["2027-01-01", "New Year's Day"],
+  ].map(([day, name]) => ({ orgId: org.id, day: day as string, name: name as string })),
+)
+const titles = [
+  "Operations Manager",
+  "Store Lead",
+  "Barista",
+  "Barista",
+  "Warehouse Lead",
+  "Stock Clerk",
+  "Accountant",
+  "Barista",
+  "Driver",
+]
+const staffIds: string[] = []
+let lead: string | null = null
+for (const [i, p] of people.slice(0, 10).entries()) {
+  const dept = depts[i === 0 ? 0 : i <= 4 || i === 8 ? 1 : i <= 6 || i === 9 ? 2 : 3]
+  const [e] = await db
+    .insert(employee)
+    .values({
+      orgId: org.id,
+      userId: p.id,
+      name: p.name,
+      workEmail: p.email,
+      jobTitle: i === 0 ? "Owner" : titles[i - 1],
+      departmentId: dept?.id,
+      managerId: i === 0 ? null : i === 1 ? staffIds[0] : lead,
+      employmentType: i === 8 ? "part_time" : i === 9 ? "contract" : "full_time",
+      startDate: addDay(todayIn(TZ), -400 + i * 30),
+      payType: i === 0 ? null : i < 3 ? "salary" : "hourly",
+      payRateCents: i === 0 ? null : i < 3 ? 4_800_000 : 650 + i * 25,
+      payCurrency: i === 0 ? null : "USD",
+      emergencyContactName: i === 0 ? null : `${p.name.split(" ")[1]} family`,
+      emergencyContactPhone: i === 0 ? null : `0917 555 ${String(1000 + i * 7)}`,
+    })
+    .returning()
+  if (!e) continue
+  staffIds.push(e.id)
+  if (i === 1) lead = e.id
+}
+const hrToday = todayIn(TZ)
+const leavePlan: [
+  number,
+  typeof vacationType,
+  number,
+  number,
+  "approved" | "pending" | "rejected",
+  string | null,
+][] = [
+  [2, vacationType, -20, -18, "approved", "Family visit"],
+  [4, sickType, -6, -6, "approved", "Flu"],
+  [3, vacationType, 0, 1, "approved", "Long weekend"],
+  [5, vacationType, 9, 13, "pending", "Trip to Cebu"],
+  [6, unpaidType, 16, 16, "pending", "Moving house"],
+  [7, vacationType, 3, 4, "rejected", "Inventory count week"],
+]
+let leaves = 0
+const onLeave = new Set<string>()
+for (const [i, type, from, to, status, reason] of leavePlan) {
+  const emp = staffIds[i]
+  if (!emp || !type) continue
+  const startDay = addDay(hrToday, from)
+  const endDay = addDay(hrToday, to)
+  let half = 0
+  for (let d = startDay; d <= endDay; d = addDay(d, 1)) {
+    const wd = new Date(`${d}T00:00:00Z`).getUTCDay()
+    if (wd !== 0 && wd !== 6) half += 2
+  }
+  if (!half) continue
+  if (status === "approved")
+    for (let d = startDay; d <= endDay; d = addDay(d, 1)) onLeave.add(`${emp}:${d}`)
+  await db.insert(leaveRequest).values({
+    orgId: org.id,
+    employeeId: emp,
+    leaveTypeId: type.id,
+    startDay,
+    endDay,
+    halfDays: half,
+    status,
+    reason,
+    decidedBy: status === "pending" ? null : owner.id,
+    decidedAt: status === "pending" ? null : daysAgo(Math.max(1, -from + 2)),
+    decisionNote: status === "rejected" ? "We need everyone for the count, sorry" : null,
+    createdBy: people[i]?.id ?? owner.id,
+  })
+  leaves++
+}
+let entries = 0
+for (const [i, id] of staffIds.slice(1, 8).entries()) {
+  for (let d = 13; d >= 0; d--) {
+    const day = addDay(hrToday, -d)
+    const wd = new Date(`${day}T00:00:00Z`).getUTCDay()
+    if (wd === 0 || wd === 6) continue
+    if ((i + d) % 9 === 4) continue // a day off here and there
+    if (onLeave.has(`${id}:${day}`)) continue
+    const inAt = zonedToUtc(day, 7 * 60 + 30 + ((i * 7 + d * 3) % 45), TZ)
+    if (!inAt) continue
+    const isToday = d === 0
+    if (isToday && inAt.getTime() > now) continue
+    const outAt = new Date(inAt.getTime() + (8 * 60 + 30 + ((i + d) % 4) * 25) * 60_000)
+    const open = isToday && (i % 2 === 0 || outAt.getTime() > now)
+    await db.insert(timeEntry).values({
+      orgId: org.id,
+      employeeId: id,
+      clockIn: inAt,
+      clockOut: open ? null : outAt,
+      createdBy: people[i + 1]?.id ?? owner.id,
+    })
+    entries++
+  }
+}
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products, ${orderSeed.length} orders, ${bookingCount} bookings and ${posSales} till sales over ${posShifts} shifts.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, ${productCount} products, ${orderSeed.length} orders, ${bookingCount} bookings, ${posSales} till sales over ${posShifts} shifts, ${staffIds.length} employees with ${entries} time entries and ${leaves} leave requests.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)
