@@ -14,6 +14,7 @@
 - **CRM** records reference their customer by `(customer_id, org_id)` with composite foreign keys, so the database itself refuses cross-org links; owners must be org members; only `http(s)` websites are stored; money is stored as integer cents.
 - **Tasks** use the same composite `(…, org_id)` foreign keys for projects, checklist items and comments; assignees must be members; repeating tasks spawn their next occurrence once, inside a transaction.
 - **Invoices** are locked by a database trigger once sent (lines, totals, customer, number and dates can't change; no deletes), numbered from a row-locked counter, and paid under a row lock with a `paid ≤ total` check. Money is integer cents with exact rounding. Customer links are 144-bit, `noindex` and `no-referrer`.
+- **Inventory** keeps an append-only stock ledger (trigger blocks edits and deletes), locks stock rows for every movement, keeps quantities ≥ 0 with a database check, and writes both sides of a transfer in one transaction.
 - **Secrets** are validated at startup and never committed (`.env` is ignored; see `.env.example`).
 
 ## Verified
@@ -41,6 +42,7 @@ These, and more, run automatically in [`tests/`](tests) on every push (see CI):
 | CRM           | another org gets 404 on read/update/delete/attach; database rejects cross-org child rows; owners must be members; `javascript:` websites rejected; LIKE characters literal; amounts parsed without floats; automatic history can't be deleted; CSV formulas neutralized                   |
 | Tasks         | another org gets 404 on every task/project action; database rejects cross-org checklist rows; can't file into another org's or an archived project; members delete only their own tasks and comments; repeats never duplicate; LIKE characters literal                                    |
 | Invoicing     | sent invoices can't be edited or deleted even with direct SQL; six concurrent sends get six distinct numbers; five concurrent payments can't overpay; rounding exact; customers with invoices can't be deleted; other orgs get 404 and can't bill your customers; draft and bad links 404 |
+| Inventory     | ledger can't be edited or deleted even with direct SQL; 8 concurrent issues against 5 in stock let exactly 5 through; opposite transfers don't deadlock; failed transfers change nothing; stock never negative; other orgs get 404 and can't mix locations                                |
 | Dashboard     | metrics count only the active org's rows                                                                                                                                                                                                                                                  |
 
 **Note:** Better Auth disables its origin check when `NODE_ENV=test`. This project sets `disableOriginCheck: false` explicitly so the protection is always on — and tested.

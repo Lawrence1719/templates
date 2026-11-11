@@ -24,6 +24,7 @@
     "@templates/forms": "workspace:*",
     "@templates/crm": "workspace:*",
     "@templates/tasks": "workspace:*",
-    "@templates/invoicing": "workspace:*"
+    "@templates/invoicing": "workspace:*",
+    "@templates/inventory": "workspace:*"
   }
 }

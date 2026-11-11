@@ -1,6 +1,7 @@
 import type { NavGroup } from "@templates/shell"
 import {
   Bell,
+  Boxes,
   Building2,
   CheckSquare,
   ClipboardList,
@@ -48,6 +49,18 @@ export const nav: NavGroup[] = [
         icon: ReceiptText,
         permission: { invoice: ["read"] },
         keywords: ["billing", "quotes", "estimates", "payments", "receivables"],
+      },
+    ],
+  },
+  {
+    label: "Operations",
+    items: [
+      {
+        title: "Inventory",
+        href: "/inventory",
+        icon: Boxes,
+        permission: { inventory: ["read"] },
+        keywords: ["stock", "products", "warehouse", "sku", "reorder", "locations"],
       },
     ],
   },

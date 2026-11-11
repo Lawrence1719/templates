@@ -54,6 +54,11 @@ export const notificationTypes = {
     description: "Sent to owners, admins and whoever created it.",
     defaults: { inApp: true, email: false },
   },
+  "stock.low": {
+    label: "A product runs low",
+    description: "When stock falls to its reorder point. Sent to owners and admins.",
+    defaults: { inApp: true, email: true },
+  },
   "member.removed": {
     label: "You're removed from an organization",
     description: "Email only, since you lose access to the app.",

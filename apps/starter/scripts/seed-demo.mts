@@ -20,10 +20,14 @@ const {
   invoice,
   invoiceLine,
   invoiceSettings,
+  location,
   member,
   organization,
   payment,
+  product,
   project,
+  stockLevel,
+  stockMovement,
   task,
   taskChecklistItem,
   taskComment,
@@ -493,8 +497,93 @@ await db
   .set({ nextInvoiceNumber: invNo + 1, nextQuoteNumber: quoteNo + 1 })
   .where(eq(invoiceSettings.orgId, org.id))
 
+// ---------- Inventory ----------
+const [warehouse, storeA, storeB] = await db
+  .insert(location)
+  .values([
+    { orgId: org.id, name: "Main warehouse", address: "Lot 4, Pasig Industrial Park" },
+    { orgId: org.id, name: "Makati store", address: "88 Ayala Ave" },
+    { orgId: org.id, name: "BGC store", address: "5th Ave, Bonifacio Global City" },
+  ])
+  .returning()
+const stockSeed = [
+  ["BEAN-HOUSE-1KG", "House blend beans", "Coffee", "kg", 1250, 2200, 20, 60, [80, 12, 9]],
+  ["BEAN-SO-ETH", "Ethiopia single origin", "Coffee", "kg", 1900, 3400, 10, 30, [14, 3, 2]],
+  ["MILK-WHOLE-1L", "Whole milk", "Dairy", "L", 120, 0, 40, 120, [60, 18, 25]],
+  ["MILK-OAT-1L", "Oat milk", "Dairy", "L", 260, 0, 24, 72, [10, 4, 2]],
+  ["CUP-12OZ", "Paper cup 12oz", "Packaging", "pcs", 6, 0, 1000, 5000, [6000, 900, 400]],
+  ["LID-12OZ", "Lid 12oz", "Packaging", "pcs", 4, 0, 1000, 5000, [5200, 700, 650]],
+  ["SYR-VAN-750", "Vanilla syrup 750ml", "Syrups", "bottle", 520, 0, 6, 24, [0, 2, 1]],
+  ["TEE-LOGO-M", "Logo t-shirt (M)", "Merch", "pcs", 350, 899, 5, 20, [30, 6, 0]],
+] as const
+let productCount = 0
+const balances = new Map<string, number>()
+for (const [i, [sku, name, category, unit, cost, price, rp, rq, qtys]] of stockSeed.entries()) {
+  const [p] = await db
+    .insert(product)
+    .values({
+      orgId: org.id,
+      sku,
+      name,
+      category,
+      unit,
+      currency: "USD",
+      costCents: cost,
+      priceCents: price,
+      reorderPointMilli: rp * 1000,
+      reorderQtyMilli: rq * 1000,
+    })
+    .returning()
+  if (!p || !warehouse || !storeA || !storeB) continue
+  productCount++
+  const move = async (
+    loc: string,
+    kind: "receive" | "issue" | "transfer_out" | "transfer_in" | "count",
+    qty: number,
+    daysBack: number,
+    extra: { reason?: string; reference?: string; transferId?: string } = {},
+  ) => {
+    const key = `${p.id}:${loc}`
+    const after = (balances.get(key) ?? 0) + qty
+    balances.set(key, after)
+    await db.insert(stockMovement).values({
+      orgId: org.id,
+      productId: p.id,
+      locationId: loc,
+      kind,
+      quantityMilli: qty,
+      balanceAfterMilli: after,
+      createdBy: people[(i % 4) + 1]?.id ?? owner.id,
+      createdAt: daysAgo(daysBack),
+      ...extra,
+    })
+  }
+  const [w, a, b] = qtys.map((q) => q * 1000) as [number, number, number]
+  // Received into the warehouse, sent out to the stores, some sold.
+  const totalIn = w + a + b + (a + b) / 2
+  await move(warehouse.id, "receive", totalIn, 40, { reference: `PO-${2400 + i}` })
+  for (const [loc, qty, days] of [
+    [storeA.id, a, 30],
+    [storeB.id, b, 28],
+  ] as const) {
+    const moved = qty + qty / 2
+    if (moved <= 0) continue
+    const transferId = crypto.randomUUID()
+    await move(warehouse.id, "transfer_out", -moved, days, { transferId })
+    await move(loc, "transfer_in", moved, days, { transferId })
+    await move(loc, "issue", -(qty / 2), days - 10, { reason: "sold" })
+  }
+  if (i === 0) await move(warehouse.id, "count", 0, 3)
+  for (const [loc] of [[warehouse.id], [storeA.id], [storeB.id]]) {
+    const qty = balances.get(`${p.id}:${loc}`) ?? 0
+    await db
+      .insert(stockLevel)
+      .values({ orgId: org.id, productId: p.id, locationId: loc, quantityMilli: qty })
+  }
+}
+
 console.info(
-  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks and ${docs.length} invoices and quotes.`,
+  `Seeded "${org.name}" with ${people.length} members, ${rows.length} activity entries, ${crmCount} customers, ${taskCount} tasks, ${docs.length} invoices and quotes, and ${productCount} products.`,
 )
 console.info(`Switch to it from the organization menu as ${ownerEmail}.`)
 process.exit(0)

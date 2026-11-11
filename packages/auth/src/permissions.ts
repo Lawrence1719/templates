@@ -18,6 +18,7 @@ export const statements = {
   task: ["read", "write", "delete"],
   invoice: ["read", "write", "send", "void", "settings"],
   payment: ["record", "delete"],
+  inventory: ["read", "move", "adjust", "manage"],
 } as const
 
 export const ac = createAccessControl(statements)
@@ -45,6 +46,7 @@ export const admin = ac.newRole({
   task: ["read", "write", "delete"],
   invoice: ["read", "write", "send", "void", "settings"],
   payment: ["record", "delete"],
+  inventory: ["read", "move", "adjust", "manage"],
 })
 
 /** Regular staff: uses the app, cannot manage the org. */
@@ -62,6 +64,8 @@ export const member = ac.newRole({
   task: ["read", "write"],
   // Members can see invoices and prepare drafts; sending, voiding and money in are for admins.
   invoice: ["read", "write"],
+  // Members receive, issue and transfer stock; counts, corrections and the catalog are for admins.
+  inventory: ["read", "move"],
 })
 
 export const roles = { owner, admin, member }
